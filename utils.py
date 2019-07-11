@@ -18,3 +18,11 @@ def plot_rewards(episode_rewards):
     plt.plot(y, label='smoothed')
     plt.legend()
     plt.show()
+
+
+def save_rewards(episode_rewards, file_name='ddqn_rewards.npy'):
+    np.save(file_name, episode_rewards)
+
+
+def load_rewards(file_name='ddqn_rewards.npy'):
+    return np.load(file_name)
