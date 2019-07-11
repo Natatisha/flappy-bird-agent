@@ -1,4 +1,3 @@
-import sys
 import argparse
 import gym
 from gym.wrappers import Monitor
@@ -37,7 +36,6 @@ def get_arguments():
 
 if __name__ == '__main__':
     args = get_arguments()
-    print(args)
 
     batch_size = args['batch_size'][0]
     gamma = args['gamma'][0]
@@ -46,6 +44,10 @@ if __name__ == '__main__':
     record_each = args['record_frequency'][0]
     model_out = args['model_out'][0]
     rewards_out = args['rewards_out'][0]
+
+    env = gym.make("FlappyBird-v0")
+    if record_video:
+        env = Monitor(env, "./ddpq_videos", video_callable=lambda episode_id: episode_id % record_each == 0, force=True)
 
     model, episode_rewards = train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name=model_out)
     save_rewards(episode_rewards, file_name=rewards_out)
