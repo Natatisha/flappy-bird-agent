@@ -113,7 +113,7 @@ def update_state(state, new_frame):
     return np.append(state[:, :, 1:], np.expand_dims(new_frame, 2), axis=2)
 
 
-def learn(model: DDQN, target_model: DDQN, replay_buffer: ReplayBuffer, gamma):
+def learn(model, target_model, replay_buffer, gamma):
     states, actions, rewards, next_states, dones = replay_buffer.sample()
 
     next_Qs = target_model.predict(next_states)
@@ -127,12 +127,12 @@ def learn(model: DDQN, target_model: DDQN, replay_buffer: ReplayBuffer, gamma):
 
 def play_one_episode(
         env,
-        session: tf.Session,
+        session,
         total_t,
-        model: DDQN,
-        target_model: DDQN,
-        replay_buffer: ReplayBuffer,
-        image_tansformer: ImageTransformer,
+        model,
+        target_model,
+        replay_buffer,
+        image_tansformer,
         gamma,
         epsilon,
         epsilon_change,
