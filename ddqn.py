@@ -14,7 +14,7 @@ from replay_buffer import ReplayBuffer
 
 # prod
 MAX_EXPERIENCES = 500000
-MIN_EXPERIENCES = 5000
+MIN_EXPERIENCES = 10000
 TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 80
 ACTIONS_NUM = 2
@@ -178,7 +178,7 @@ def play_one_episode(
 
         epsilon = max(epsilon - epsilon_change, epsilon_min)
 
-    return total_t, episode_reward, (datetime.now() - t0), \
+    return total_t, episode_reward, (datetime.now() - t0).total_seconds(), \
            num_steps, total_training_time / num_steps, epsilon
 
 
