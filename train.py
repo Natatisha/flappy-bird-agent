@@ -7,8 +7,8 @@ from ddqn import train_ddqn_model
 from utils import plot_rewards, save_rewards, load_rewards
 
 DEFAULT_GAMMA = 0.99
-DEFAULT_BATCH_SIZE = 128
-DEFAULT_NUM_EPISODES = 5000
+DEFAULT_BATCH_SIZE = 32
+DEFAULT_NUM_EPISODES = 3500
 
 
 def get_arguments():
@@ -17,7 +17,7 @@ def get_arguments():
                         help="Size of a minibatch")
     parser.add_argument('--gamma', '-g', action='store', nargs=1, default=[DEFAULT_GAMMA], type=float,
                         help="Discount factor")
-    parser.add_argument('--num_episodes', '-n', action='store', nargs=1, default=[DEFAULT_GAMMA], type=int,
+    parser.add_argument('--num_episodes', '-n', action='store', nargs=1, default=[DEFAULT_NUM_EPISODES], type=int,
                         help="Number of episodes")
     parser.add_argument('--record', '-r', action='store', nargs=1, default=[False], type=bool,
                         help="Whether or not to record a video of training. Default=False")
@@ -46,10 +46,6 @@ if __name__ == '__main__':
     record_each = args['record_frequency'][0]
     model_out = args['model_out'][0]
     rewards_out = args['rewards_out'][0]
-
-    env = gym.make("FlappyBird-v0")
-    if record_video:
-        env = Monitor(env, "./ddpq_videos", video_callable=lambda episode_id: episode_id % record_each == 0, force=True)
 
     model, episode_rewards = train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name=model_out)
     save_rewards(episode_rewards, file_name=rewards_out)
