@@ -98,11 +98,11 @@ class DDQN:
     def save(self, file_name='tf_dqn_weights.npz'):
         params = [t for t in tf.trainable_variables() if t.name.startswith(self.scope)]
         params = self.sess.run(params)
-        np.savez('models/' + file_name, *params)
+        np.savez(file_name, *params)
 
     def load(self, file_name='tf_dqn_weights.npz'):
         params = [t for t in tf.trainable_variables() if t.name.startswith(self.scope)]
-        npz = np.load('models/' + file_name)
+        npz = np.load(file_name)
         ops = []
         for p, (_, v) in zip(params, npz.iteritems()):
             ops.append(p.assign(v))
