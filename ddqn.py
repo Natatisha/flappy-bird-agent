@@ -91,7 +91,7 @@ class DDQN:
 
     def sample_action(self, states, eps):
         if np.random.random() < eps:
-            return np.random.choice(self.actions_n)
+            return np.random.choice(self.actions_n, p=[0.8, 0.2]) #better to act 1 time in 5 steps
         else:
             return np.argmax(self.predict([states])[0])
 
