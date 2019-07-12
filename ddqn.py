@@ -125,10 +125,16 @@ def learn(model, target_model, replay_buffer, gamma):
     return loss
 
 
+def decaying_epsilon(x, min_value, decay_rate=0.99):
+    eps = decay_rate ** x
+    return max(eps, min_value)
+
+
 def play_one_episode(
         env,
         session,
         total_t,
+        episode_num,
         model,
         target_model,
         replay_buffer,
@@ -176,7 +182,7 @@ def play_one_episode(
 
         state = next_state
 
-        epsilon = max(epsilon - epsilon_change, epsilon_min)
+        epsilon = decaying_epsilon(episode_num, epsilon_min)
 
     return total_t, episode_reward, (datetime.now() - t0).total_seconds(), \
            num_steps, total_training_time / num_steps, epsilon
@@ -201,7 +207,7 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='dd
     episode_rewards = np.zeros(num_episodes)
 
     epsilon = 1.0
-    epsilon_min = 0.1
+    epsilon_min = 0.01
     epsilon_change = (epsilon - epsilon_min) / 500000
 
     # Create models
@@ -238,6 +244,7 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='dd
                 env,
                 sess,
                 total_t,
+                i,
                 model,
                 target_model,
                 replay_buffer,
@@ -259,7 +266,7 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='dd
                   "Epsilon:", "%.3f" % epsilon
                   )
             sys.stdout.flush()
-        print("Total duration:", datetime.now() - t0)
+        print("Total duration:", str(datetime.now() - t0))
 
         model.save(file_name=weights_file_name)
 
