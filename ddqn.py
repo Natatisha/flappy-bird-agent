@@ -14,7 +14,7 @@ from replay_buffer import ReplayBuffer
 
 # prod
 MAX_EXPERIENCES = 500000
-MIN_EXPERIENCES = 10000
+MIN_EXPERIENCES = 50000
 TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 80
 ACTIONS_NUM = 2
@@ -91,7 +91,7 @@ class DDQN:
 
     def sample_action(self, states, eps):
         if np.random.random() < eps:
-            return np.random.choice(self.actions_n)
+            return np.random.choice(self.actions_n, p=[0.8, 0.2]) #better to act 1 time in 5 steps
         else:
             return np.argmax(self.predict([states])[0])
 
@@ -149,7 +149,7 @@ def play_one_episode(
 
     raw_frame = env.reset()
     frame = image_tansformer.transform(raw_frame, session)
-    state = np.stack([frame] * 4, axis=2)
+    state = np.stack([frame] * FRAMES_IN_STATE, axis=2)
     loss = None
 
     done = False
