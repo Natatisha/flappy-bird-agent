@@ -149,7 +149,7 @@ def play_one_episode(
 
     raw_frame = env.reset()
     frame = image_tansformer.transform(raw_frame, session)
-    state = np.stack([frame] * 4, axis=2)
+    state = np.stack([frame] * FRAMES_IN_STATE, axis=2)
     loss = None
 
     done = False
