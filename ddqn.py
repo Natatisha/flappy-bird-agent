@@ -182,7 +182,7 @@ def play_one_episode(
 
         state = next_state
 
-        epsilon = decaying_epsilon(episode_num, epsilon_min)
+        epsilon = max(epsilon - epsilon_change, epsilon_min)
 
     return total_t, episode_reward, (datetime.now() - t0).total_seconds(), \
            num_steps, total_training_time / num_steps, epsilon
@@ -208,7 +208,7 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='dd
 
     epsilon = 1.0
     epsilon_min = 0.01
-    epsilon_change = (epsilon - epsilon_min) / 500000
+    epsilon_change = (epsilon - epsilon_min) / 300000
 
     # Create models
     conv_layer_sizes = [(32, 8, 4), (64, 4, 2), (64, 3, 1)]
