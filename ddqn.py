@@ -202,13 +202,14 @@ def populate_experience(env, image_transformer, replay_buffer, sess):
     env.close()
 
 
-def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='ddqn_weights.npz'):
+def train_ddqn_model(env, num_episodes, batch_size, gamma, epsilon_decay_rate=300000,
+                     weights_file_name='ddqn_weights.npz'):
     replay_buffer = ReplayBuffer(MAX_EXPERIENCES, batch_size, (IMG_SIZE, IMG_SIZE), FRAMES_IN_STATE)
     episode_rewards = np.zeros(num_episodes)
 
     epsilon = 1.0
     epsilon_min = 0.01
-    epsilon_change = (epsilon - epsilon_min) / 300000
+    epsilon_change = (epsilon - epsilon_min) / epsilon_decay_rate
 
     # Create models
     conv_layer_sizes = [(32, 8, 4), (64, 4, 2), (64, 3, 1)]
