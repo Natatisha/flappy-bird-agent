@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import matplotlib.pyplot as plt
+from utils import plot_rewards, save_rewards, load_rewards
 
 
 def decay(x, decay_rate=0.99, min_value=0.1):
@@ -14,6 +15,8 @@ def linear_decay(x, decay_rate, min_value=0.01):
 
 
 if __name__ == '__main__':
-    X = np.arange(0., 30000., 1.)
-    plt.plot(X, linear_decay(X, decay_rate=(1. - 0.01)/50000))
-    plt.show()
+    X = np.arange(0., 70000., 1.)
+    # plt.plot(X, linear_decay(X, decay_rate=(1. - 0.01)/30000))
+    # plt.show()
+    rewards = load_rewards()
+    plot_rewards(rewards)
