@@ -3,18 +3,28 @@ import sys
 import tensorflow as tf
 import numpy as np
 from datetime import datetime
+from enum import Enum
+import math
 
 from image_transformer import ImageTransformer
 from replay_buffer import ReplayBuffer
 
+
+class EpsilonDecay(Enum):
+    LINEAR = 0
+    SINUSOID = 1
+    EXPONENTIAL = 2
+
+
 # constants
 # for testing
-# MAX_EXPERIENCES = 10000
-# MIN_EXPERIENCES = 100
+MAX_EXPERIENCES = 10000
+MIN_EXPERIENCES = 100
 
 # prod
-MAX_EXPERIENCES = 500000
-MIN_EXPERIENCES = 50000
+EPSILON_DECAY_TYPE = EpsilonDecay.SINUSOID
+# MAX_EXPERIENCES = 500000
+# MIN_EXPERIENCES = 50000
 TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 80
 ACTIONS_NUM = 2
@@ -91,7 +101,7 @@ class DDQN:
 
     def sample_action(self, states, eps):
         if np.random.random() < eps:
-            return np.random.choice(self.actions_n, p=[0.8, 0.2]) #better to act 1 time in 5 steps
+            return np.random.choice(self.actions_n, p=[0.8, 0.2])  # better to act 1 time in 5 steps
         else:
             return np.argmax(self.predict([states])[0])
 
@@ -125,9 +135,27 @@ def learn(model, target_model, replay_buffer, gamma):
     return loss
 
 
-def decaying_epsilon(x, min_value, decay_rate=0.99):
+def decaying_epsilon(x, X_total, decay_rate, initial_value=1., min_value=0.01):
+    if EPSILON_DECAY_TYPE == EpsilonDecay.SINUSOID:
+        return sinusoid_decay(x, initial_value, X_total)
+    elif EPSILON_DECAY_TYPE == EpsilonDecay.EXPONENTIAL:
+        return exp_decay(x, min_value=min_value)
+    else:
+        return linear_decay(x, initial_value, min_value=min_value, decay_rate=decay_rate)
+
+
+def exp_decay(x, decay_rate=0.9997, min_value=0.1):
     eps = decay_rate ** x
     return max(eps, min_value)
+
+
+def linear_decay(x, initial_eps, decay_rate, min_value=0.01):
+    eps = initial_eps - x * decay_rate
+    return max(eps, min_value)
+
+
+def sinusoid_decay(x, initial_eps, X_total, decay_rate=0.9996, n_epochs=5):
+    return initial_eps * decay_rate ** x * 0.5 * (1. + math.cos((2. * math.pi * x * n_epochs) / X_total))
 
 
 def play_one_episode(
@@ -135,14 +163,15 @@ def play_one_episode(
         session,
         total_t,
         episode_num,
+        total_episodes_num,
         model,
         target_model,
         replay_buffer,
         image_tansformer,
         gamma,
         epsilon,
-        epsilon_change,
-        epsilon_min=0.1,
+        epsilon_decay,
+        epsilon_min=0.01,
         target_upd_period=TARGET_UPD_PERIOD):
     t0 = datetime.now()
     total_training_time = 0
@@ -182,7 +211,7 @@ def play_one_episode(
 
         state = next_state
 
-        epsilon = max(epsilon - epsilon_change, epsilon_min)
+        epsilon = decaying_epsilon(episode_num, total_episodes_num, epsilon_decay, min_value=epsilon_min)
 
     return total_t, episode_reward, (datetime.now() - t0).total_seconds(), \
            num_steps, total_training_time / num_steps, epsilon
@@ -246,6 +275,7 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, epsilon_decay_rate=30
                 sess,
                 total_t,
                 i,
+                num_episodes,
                 model,
                 target_model,
                 replay_buffer,
