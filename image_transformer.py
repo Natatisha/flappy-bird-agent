@@ -19,10 +19,11 @@ class ImageTransformer:
 
     def transform(self, image, sess=None):
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        cropped = gray[:400, 50:]
+        cropped = gray[self.crop_boundaries[0]:self.crop_boundaries[2], self.crop_boundaries[1]:self.crop_boundaries[3]]
         resized = cv2.resize(cropped, self.out_shape)
-        # thresholded = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 1)
-        thresholded = cv2.threshold(resized, 100, 155, cv2.THRESH_BINARY)[1]
+        thresholded = cv2.adaptiveThreshold(resized, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 2)
+        # thresholded = cv2.threshold(resized, 100, 155, cv2.THRESH_BINARY)[1]
+        normalized = cv2.normalize(thresholded, np.zeros_like(thresholded), 0, 255, cv2.NORM_MINMAX)
         sess = sess or tf.get_default_session()
         # return sess.run(self.output, feed_dict={self.input_img: image})
-        return sess.run(self.converted, feed_dict={self.converted: thresholded})
+        return sess.run(self.converted, feed_dict={self.converted: normalized})
