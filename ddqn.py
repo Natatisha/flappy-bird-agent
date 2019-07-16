@@ -146,7 +146,7 @@ def decaying_epsilon(x, X_total, decay_rate, initial_value=1., min_value=0.01):
         return linear_decay(x, initial_value, min_value=min_value, decay_rate=decay_rate)
 
 
-def exp_decay(x, decay_rate=0.9997, min_value=0.1):
+def exp_decay(x, decay_rate=0.999, min_value=0.1):
     eps = decay_rate ** x
     return max(eps, min_value)
 
