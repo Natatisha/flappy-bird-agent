@@ -22,6 +22,8 @@ class ImageTransformer:
         cropped = gray[self.crop_boundaries[0]:self.crop_boundaries[2], self.crop_boundaries[1]:self.crop_boundaries[3]]
         resized = cv2.resize(cropped, self.out_shape)
         thresholded = cv2.adaptiveThreshold(resized, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 2)
+        normalized = np.zeros_like(thresholded)
+        normalized = cv2.normalize(thresholded, normalized, 0, 1, cv2.NORM_MINMAX)
         # thresholded = cv2.threshold(resized, 100, 155, cv2.THRESH_BINARY)[1]
         # return sess.run(self.output, feed_dict={self.input_img: image})
-        return sess.run(self.converted, feed_dict={self.converted: thresholded})
+        return sess.run(self.converted, feed_dict={self.converted: normalized})

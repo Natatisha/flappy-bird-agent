@@ -18,16 +18,16 @@ class EpsilonDecay(Enum):
 
 # constants
 # for testing
-# MAX_EXPERIENCES = 10000
-# MIN_EXPERIENCES = 100
+MAX_EXPERIENCES = 10000
+MIN_EXPERIENCES = 100
 
 # prod
 EPSILON_DECAY_TYPE = EpsilonDecay.EXPONENTIAL
-MAX_EXPERIENCES = 500000
-MIN_EXPERIENCES = 50000
+# MAX_EXPERIENCES = 500000
+# MIN_EXPERIENCES = 50000
 TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 80
-ACTIONS_NUM = 2
+ACTIONS_NUM = 4
 FRAMES_IN_STATE = 4
 SAVE_EACH = 1000
 
@@ -45,7 +45,7 @@ class DDQN:
             self.actions = tf.placeholder(dtype=tf.int32, shape=(None,), name='actions')
             self.G = tf.placeholder(dtype=tf.float32, shape=(None,), name='G')
 
-            Z = self.X / 255.
+            Z = self.X
 
             for num_output_filters, filtersz, poolsz in conv_layers_sizes:
                 Z = tf.contrib.layers.conv2d(
@@ -102,7 +102,8 @@ class DDQN:
 
     def sample_action(self, states, eps):
         if np.random.random() < eps:
-            return np.random.choice(self.actions_n, p=[0.6, 0.4])  # better to act 1 time in 5 steps
+            # return np.random.choice(self.actions_n, p=[0.6, 0.4])  # better to act 1 time in 5 steps
+            return np.random.choice(self.actions_n)  # better to act 1 time in 5 steps
         else:
             return np.argmax(self.predict([states])[0])
 
@@ -258,7 +259,7 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, epsilon_decay_rate=30
         hidden_layer_sizes,
         scope="target_model"
     )
-    image_transformer = ImageTransformer(out_shape=(IMG_SIZE, IMG_SIZE))
+    image_transformer = ImageTransformer(out_shape=(IMG_SIZE, IMG_SIZE), crop_boundaries=(34, 0, 160, 160))
 
     total_t = 0
 
