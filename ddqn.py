@@ -18,13 +18,13 @@ class EpsilonDecay(Enum):
 
 # constants
 # for testing
-MAX_EXPERIENCES = 10000
-MIN_EXPERIENCES = 100
+# MAX_EXPERIENCES = 10000
+# MIN_EXPERIENCES = 100
 
 # prod
-EPSILON_DECAY_TYPE = EpsilonDecay.SINUSOID
-# MAX_EXPERIENCES = 500000
-# MIN_EXPERIENCES = 50000
+EPSILON_DECAY_TYPE = EpsilonDecay.EXPONENTIAL
+MAX_EXPERIENCES = 500000
+MIN_EXPERIENCES = 50000
 TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 80
 ACTIONS_NUM = 2
@@ -102,7 +102,7 @@ class DDQN:
 
     def sample_action(self, states, eps):
         if np.random.random() < eps:
-            return np.random.choice(self.actions_n, p=[0.8, 0.2])  # better to act 1 time in 5 steps
+            return np.random.choice(self.actions_n, p=[0.6, 0.4])  # better to act 1 time in 5 steps
         else:
             return np.argmax(self.predict([states])[0])
 
@@ -170,7 +170,7 @@ def play_one_episode(
         replay_buffer,
         image_tansformer,
         gamma,
-        epsilon,
+        epsilon_start,
         epsilon_decay,
         epsilon_min=0.01,
         target_upd_period=TARGET_UPD_PERIOD):
@@ -194,6 +194,9 @@ def play_one_episode(
             print("Copied model parameters to target network. total_t = %s, period = %s" % (
                 total_t, target_upd_period))
 
+        epsilon = decaying_epsilon(episode_num, total_episodes_num, epsilon_decay, initial_value=epsilon_start,
+                                   min_value=epsilon_min)
+
         action = model.sample_action(state, epsilon)
         raw_frame, reward, done, _ = env.step(action)
         frame = image_tansformer.transform(raw_frame, session)
@@ -211,8 +214,6 @@ def play_one_episode(
         total_t += 1
 
         state = next_state
-
-        epsilon = decaying_epsilon(episode_num, total_episodes_num, epsilon_decay, min_value=epsilon_min)
 
     return total_t, episode_reward, (datetime.now() - t0).total_seconds(), \
            num_steps, total_training_time / num_steps, epsilon
@@ -237,9 +238,9 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, epsilon_decay_rate=30
     replay_buffer = ReplayBuffer(MAX_EXPERIENCES, batch_size, (IMG_SIZE, IMG_SIZE), FRAMES_IN_STATE)
     episode_rewards = np.zeros(num_episodes)
 
-    epsilon = 1.0
+    epsilon_start = 1.0
     epsilon_min = 0.01
-    epsilon_change = (epsilon - epsilon_min) / epsilon_decay_rate
+    epsilon_change = epsilon_decay_rate
 
     # Create models
     conv_layer_sizes = [(32, 8, 4), (64, 4, 2), (64, 3, 1)]
@@ -282,7 +283,7 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, epsilon_decay_rate=30
                 replay_buffer,
                 image_transformer,
                 gamma,
-                epsilon,
+                epsilon_start,
                 epsilon_change,
                 epsilon_min,
             )
