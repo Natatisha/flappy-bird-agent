@@ -23,7 +23,5 @@ class ImageTransformer:
         resized = cv2.resize(cropped, self.out_shape)
         thresholded = cv2.adaptiveThreshold(resized, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 3, 2)
         # thresholded = cv2.threshold(resized, 100, 155, cv2.THRESH_BINARY)[1]
-        normalized = cv2.normalize(thresholded, np.zeros_like(thresholded), 0, 1, cv2.NORM_MINMAX)
-        sess = sess or tf.get_default_session()
         # return sess.run(self.output, feed_dict={self.input_img: image})
-        return sess.run(self.converted, feed_dict={self.converted: normalized})
+        return sess.run(self.converted, feed_dict={self.converted: thresholded})
