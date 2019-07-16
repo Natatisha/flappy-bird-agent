@@ -29,6 +29,7 @@ TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 80
 ACTIONS_NUM = 2
 FRAMES_IN_STATE = 4
+SAVE_EACH = 1000
 
 
 class DDQN:
@@ -286,6 +287,9 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, epsilon_decay_rate=30
                 epsilon_min,
             )
             episode_rewards[i] = episode_reward
+
+            if (i + 1) % SAVE_EACH == 0:
+                model.save(file_name=weights_file_name)
 
             last_100_avg = episode_rewards[max(0, i - 100):i + 1].mean()
             print("Episode:", i,
