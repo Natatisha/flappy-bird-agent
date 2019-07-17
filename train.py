@@ -48,10 +48,9 @@ if __name__ == '__main__':
     rewards_out = args['rewards_out'][0]
     decay = args['eps_decay_rate'][0]
 
-    env = gym.make("Breakout-v0")
+    env = gym.make("PongDeterministic-v4")
     if record_video:
         env = Monitor(env, "./ddpq_videos", video_callable=lambda episode_id: episode_id % record_each == 0, force=True)
 
-    model, episode_rewards = train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name=model_out,
-                                              epsilon_decay_rate=decay)
+    model, episode_rewards = train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name=model_out)
     save_rewards(episode_rewards, file_name=rewards_out)

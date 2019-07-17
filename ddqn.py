@@ -29,6 +29,8 @@ MIN_EXPERIENCES = 100
 # EPSILON_FINAL = 0.001
 # EPSILON_ANNEALING_FRAMES = 1e6
 # MAX_FRAMES = 2e6
+# OBS_SHAPE=(512, 288, 3)
+# CROP_BOUNDS=(0, 50, 400, 238)
 
 # Pong
 EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
@@ -37,6 +39,8 @@ EPSILON_CHECKPOINT = 0.1
 EPSILON_FINAL = 0.01
 EPSILON_ANNEALING_FRAMES = 1e6
 MAX_FRAMES = 2e6
+OBS_SHAPE = (210, 160, 3)
+CROP_BOUNDS = (30, 0, 170, 160)
 
 # Breakout
 # EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
@@ -45,13 +49,16 @@ MAX_FRAMES = 2e6
 # EPSILON_FINAL = 0.001
 # EPSILON_ANNEALING_FRAMES = 1e6
 # MAX_FRAMES = 2e6
+# OBS_SHAPE = (210, 160, 3)
+# CROP_BOUNDS = (34, 0, 160, 160)
 
 # MAX_EXPERIENCES = 500000
 # MIN_EXPERIENCES = 50000
 
+HIDDEN_LAYER_SIZE = 1024
 TARGET_UPD_PERIOD = 10000
-IMG_SIZE = 80
-ACTIONS_NUM = 4
+IMG_SIZE = 84
+ACTIONS_NUM = 6
 FRAMES_IN_STATE = 4
 SAVE_EACH = 1000
 
@@ -82,12 +89,11 @@ class DDQN:
             self.conv4 = tf.layers.conv2d(self.conv3, filters=hidden_layers_size, kernel_size=[7, 7], strides=1,
                                           kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
                                           activation=tf.nn.relu, use_bias=False, name='conv4')
-            print(tf.shape(self.conv4))
 
             self.advantagestream, self.valuestream = tf.split(self.conv4, 2, 3)
 
-            self.advantagestream = tf.layers.flatten(self.advantagestream)
-            self.valuestream = tf.layers.flatten(self.valuestream)
+            self.advantagestream = tf.contrib.layers.flatten(self.advantagestream)
+            self.valuestream = tf.contrib.layers.flatten(self.valuestream)
 
             self.advantage = tf.layers.dense(self.advantagestream, self.actions_n,
                                              kernel_initializer=tf.variance_scaling_initializer(scale=2),
@@ -129,7 +135,7 @@ class DDQN:
     def predict(self, X):
         return self.sess.run(self.q_values, feed_dict={self.X: X})
 
-    def best_action(self, X):
+    def get_best_action(self, X):
         return self.sess.run(self.best_action, feed_dict={self.X: X})
 
     def train(self, states, actions, targets):
@@ -145,7 +151,7 @@ class DDQN:
             # return np.random.choice(self.actions_n, p=[0.6, 0.4])  # better to act 1 time in 5 steps
             return np.random.choice(self.actions_n)  # better to act 1 time in 5 steps
         else:
-            return self.best_action([state])[0]
+            return self.get_best_action([state])[0]
 
     def save(self, file_name='tf_dqn_weights.npz'):
         params = [t for t in tf.trainable_variables() if t.name.startswith(self.scope)]
@@ -168,7 +174,7 @@ def update_state(state, new_frame):
 def learn(model, target_model, replay_buffer, gamma):
     states, actions, rewards, next_states, dones = replay_buffer.sample()
 
-    best_actions = model.best_action(next_states)
+    best_actions = model.get_best_action(next_states)
     next_Qs = target_model.predict(next_states)
     next_Q = next_Qs[range(replay_buffer.batch_size), best_actions]
 
@@ -287,20 +293,18 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='dd
     replay_buffer = ReplayBuffer(MAX_EXPERIENCES, batch_size, (IMG_SIZE, IMG_SIZE), FRAMES_IN_STATE)
     episode_rewards = np.zeros(num_episodes)
 
-    # Create models
-    hidden_layer_sizes = [1024]
-
     model = DDQN(
         ACTIONS_NUM,
-        hidden_layer_sizes,
+        HIDDEN_LAYER_SIZE,
         scope="model")
 
     target_model = DDQN(
         ACTIONS_NUM,
-        hidden_layer_sizes,
+        HIDDEN_LAYER_SIZE,
         scope="target_model")
 
-    image_transformer = ImageTransformer(out_shape=(IMG_SIZE, IMG_SIZE), crop_boundaries=(34, 0, 160, 160))
+    image_transformer = ImageTransformer(origin_shape=OBS_SHAPE, out_shape=(IMG_SIZE, IMG_SIZE),
+                                         crop_boundaries=CROP_BOUNDS)
     epsilon_scheduler = EpsilonGreedyScheduler(EpsilonDecay.LINEAR)
 
     total_t = 0
