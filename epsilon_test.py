@@ -2,9 +2,10 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from utils import plot_rewards, save_rewards, load_rewards, smooth
+from ddqn import EpsilonGreedyScheduler, EpsilonDecay
 
 
-def decay(x, decay_rate=0.9997, min_value=0.1):
+def decay(x, decay_rate=0.999, min_value=0.1):
     eps = decay_rate ** x
     return max(eps, min_value)
 
@@ -19,8 +20,9 @@ def sinusoid_decay(x, initial_eps, X_total, decay_rate=0.9996, n_epochs=5):
 
 
 if __name__ == '__main__':
-    X = np.arange(0., 10000., 1.)
-    plt.plot(X, [sinusoid_decay(x, 1., len(X)) for x in X])
+    scheduler = EpsilonGreedyScheduler(EpsilonDecay.SINUSOID)
+    X = np.arange(0., 3e6, 1.)
+    plt.plot(X, [scheduler.get_epsilon(x) for x in X])
     # plt.plot(X, [decay(x, 0.9997) for x in X])
     plt.show()
     rewards_0 = load_rewards(file_name='ddqn_rewards_0.npy')
