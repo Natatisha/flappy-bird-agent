@@ -22,9 +22,33 @@ MAX_EXPERIENCES = 10000
 MIN_EXPERIENCES = 100
 
 # prod
-EPSILON_DECAY_TYPE = EpsilonDecay.EXPONENTIAL
+# Flappy
+# EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
+# EPSILON_INITIAL = 1.
+# EPSILON_CHECKPOINT = 0.1
+# EPSILON_FINAL = 0.001
+# EPSILON_ANNEALING_FRAMES = 1e6
+# MAX_FRAMES = 2e6
+
+# Pong
+EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
+EPSILON_INITIAL = 1.
+EPSILON_CHECKPOINT = 0.1
+EPSILON_FINAL = 0.01
+EPSILON_ANNEALING_FRAMES = 1e6
+MAX_FRAMES = 2e6
+
+# Breakout
+# EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
+# EPSILON_INITIAL = 1.
+# EPSILON_CHECKPOINT = 0.1
+# EPSILON_FINAL = 0.001
+# EPSILON_ANNEALING_FRAMES = 1e6
+# MAX_FRAMES = 2e6
+
 # MAX_EXPERIENCES = 500000
 # MIN_EXPERIENCES = 50000
+
 TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 80
 ACTIONS_NUM = 4
@@ -34,41 +58,54 @@ SAVE_EACH = 1000
 
 class DDQN:
 
-    def __init__(self, actions_n, conv_layers_sizes, hidden_layers_sizes, scope, frame_shape=(IMG_SIZE, IMG_SIZE),
-                 state_depth=FRAMES_IN_STATE):
+    def __init__(self, actions_n, hidden_layers_size, scope, learning_rate=1e-6, frame_shape=(IMG_SIZE, IMG_SIZE),
+                 agent_history_length=FRAMES_IN_STATE):
         self.actions_n = actions_n
         self.scope = scope
+        self.lr = learning_rate
 
         with tf.variable_scope(self.scope):
-            self.X = tf.placeholder(dtype=tf.float32, shape=(None, frame_shape[1], frame_shape[0], state_depth),
+            self.X = tf.placeholder(dtype=tf.float32,
+                                    shape=(None, frame_shape[0], frame_shape[1], agent_history_length),
                                     name='X')
+            self.X_scaled = self.X / 255
+
+            self.conv1 = tf.layers.conv2d(self.X_scaled, filters=32, kernel_size=[8, 8], strides=4,
+                                          kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
+                                          activation=tf.nn.relu, use_bias=False, name='conv1')
+            self.conv2 = tf.layers.conv2d(self.conv1, filters=64, kernel_size=[4, 4], strides=2,
+                                          kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
+                                          activation=tf.nn.relu, use_bias=False, name='conv2')
+            self.conv3 = tf.layers.conv2d(self.conv2, filters=64, kernel_size=[3, 3], strides=1,
+                                          kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
+                                          activation=tf.nn.relu, use_bias=False, name='conv3')
+            self.conv4 = tf.layers.conv2d(self.conv3, filters=hidden_layers_size, kernel_size=[7, 7], strides=1,
+                                          kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
+                                          activation=tf.nn.relu, use_bias=False, name='conv4')
+            print(tf.shape(self.conv4))
+
+            self.advantagestream, self.valuestream = tf.split(self.conv4, 2, 3)
+
+            self.advantagestream = tf.layers.flatten(self.advantagestream)
+            self.valuestream = tf.layers.flatten(self.valuestream)
+
+            self.advantage = tf.layers.dense(self.advantagestream, self.actions_n,
+                                             kernel_initializer=tf.variance_scaling_initializer(scale=2),
+                                             name='advantage')
+            self.value = tf.layers.dense(self.valuestream, 1,
+                                         kernel_initializer=tf.variance_scaling_initializer(scale=2),
+                                         name='value')
+
+            self.q_values = self.value + tf.subtract(self.advantage,
+                                                     tf.reduce_mean(self.advantage, axis=1, keep_dims=True))
+            self.best_action = tf.argmax(self.q_values, axis=1)
+
             self.actions = tf.placeholder(dtype=tf.int32, shape=(None,), name='actions')
-            self.G = tf.placeholder(dtype=tf.float32, shape=(None,), name='G')
+            self.target_q = tf.placeholder(dtype=tf.float32, shape=(None,), name='target_q')
 
-            Z = self.X
-
-            for num_output_filters, filtersz, poolsz in conv_layers_sizes:
-                Z = tf.contrib.layers.conv2d(
-                    Z,
-                    num_output_filters,
-                    filtersz,
-                    poolsz,
-                    activation_fn=tf.nn.relu
-                )
-
-            # fully connected layers
-            Z = tf.contrib.layers.flatten(Z)
-            for M in hidden_layers_sizes:
-                Z = tf.contrib.layers.fully_connected(Z, M)
-
-            # final output layer
-            self.predict_op = tf.contrib.layers.fully_connected(Z, actions_n)
-
-            selected_action_values = tf.reduce_sum(self.predict_op * tf.one_hot(self.actions, actions_n), axis=1)
-
-            cost = tf.reduce_mean(tf.losses.huber_loss(self.G, selected_action_values))
-            self.train_optimizer = tf.train.AdamOptimizer(1e-5).minimize(cost)
-            self.cost = cost
+            self.Q = tf.reduce_sum(self.q_values * tf.one_hot(self.actions, actions_n), axis=1)
+            self.cost = tf.reduce_mean(tf.losses.huber_loss(labels=self.target_q, predictions=self.Q))
+            self.train_optimizer = tf.train.AdamOptimizer(self.lr).minimize(self.cost)
 
             self.sess = None
 
@@ -90,22 +127,25 @@ class DDQN:
         self.sess = session
 
     def predict(self, X):
-        return self.sess.run(self.predict_op, feed_dict={self.X: X})
+        return self.sess.run(self.q_values, feed_dict={self.X: X})
+
+    def best_action(self, X):
+        return self.sess.run(self.best_action, feed_dict={self.X: X})
 
     def train(self, states, actions, targets):
         cost, _ = self.sess.run([self.cost, self.train_optimizer], feed_dict={
             self.actions: actions,
-            self.G: targets,
+            self.target_q: targets,
             self.X: states
         })
         return cost
 
-    def sample_action(self, states, eps):
+    def sample_action(self, state, eps):
         if np.random.random() < eps:
             # return np.random.choice(self.actions_n, p=[0.6, 0.4])  # better to act 1 time in 5 steps
             return np.random.choice(self.actions_n)  # better to act 1 time in 5 steps
         else:
-            return np.argmax(self.predict([states])[0])
+            return self.best_action([state])[0]
 
     def save(self, file_name='tf_dqn_weights.npz'):
         params = [t for t in tf.trainable_variables() if t.name.startswith(self.scope)]
@@ -128,8 +168,10 @@ def update_state(state, new_frame):
 def learn(model, target_model, replay_buffer, gamma):
     states, actions, rewards, next_states, dones = replay_buffer.sample()
 
+    best_actions = model.best_action(next_states)
     next_Qs = target_model.predict(next_states)
-    next_Q = np.amax(next_Qs, axis=1)
+    next_Q = next_Qs[range(replay_buffer.batch_size), best_actions]
+
     # if terminal state - target is reward, else r + gamma*max(next_Q)
     targets = rewards + gamma * next_Q * np.invert(dones).astype(np.float32)
 
@@ -137,43 +179,52 @@ def learn(model, target_model, replay_buffer, gamma):
     return loss
 
 
-def decaying_epsilon(x, X_total, decay_rate, initial_value=1., min_value=0.01):
-    if EPSILON_DECAY_TYPE == EpsilonDecay.SINUSOID:
-        return sinusoid_decay(x, initial_value, X_total)
-    elif EPSILON_DECAY_TYPE == EpsilonDecay.EXPONENTIAL:
-        return exp_decay(x, min_value=min_value)
-    else:
-        return linear_decay(x, initial_value, min_value=min_value, decay_rate=decay_rate)
+class EpsilonGreedyScheduler:
+    def __init__(self, decay_type=EPSILON_DECAY_TYPE, epsilon_initial_value=EPSILON_INITIAL,
+                 epsilon_checkpoint=EPSILON_CHECKPOINT, epsilon_final_value=EPSILON_FINAL):
+        self.decay_type = decay_type
+        self.initial = epsilon_initial_value
+        self.final = epsilon_final_value
+        self.chekpoint = epsilon_checkpoint
 
+        self.slope = -(self.initial - self.chekpoint) / EPSILON_ANNEALING_FRAMES
+        self.intercept = self.initial - self.slope
+        self.slope_2 = -(self.chekpoint - self.final) / (MAX_FRAMES - EPSILON_ANNEALING_FRAMES)
+        self.intercept_2 = self.final - self.slope_2 * MAX_FRAMES
 
-def exp_decay(x, decay_rate=0.999, min_value=0.1):
-    eps = decay_rate ** x
-    return max(eps, min_value)
+    def get_epsilon(self, frame):
+        if self.decay_type == EpsilonDecay.SINUSOID:
+            return self.sinusoid_decay(frame)
+        elif self.decay_type == EpsilonDecay.EXPONENTIAL:
+            return self.exp_decay(frame)
+        else:
+            return self.linear_decay(frame)
 
+    def exp_decay(self, frame, decay_rate=0.999999):
+        eps = decay_rate ** frame
+        return max(eps, self.final)
 
-def linear_decay(x, initial_eps, decay_rate, min_value=0.01):
-    eps = initial_eps - x * decay_rate
-    return max(eps, min_value)
+    def linear_decay(self, frame):
+        if frame < EPSILON_ANNEALING_FRAMES:
+            return self.slope * frame + self.intercept
+        else:
+            return max(self.slope_2 * frame + self.intercept_2, self.final)
 
-
-def sinusoid_decay(x, initial_eps, X_total, decay_rate=0.9996, n_epochs=5):
-    return initial_eps * decay_rate ** x * 0.5 * (1. + math.cos((2. * math.pi * x * n_epochs) / X_total))
+    def sinusoid_decay(self, x, decay_rate=0.999997, n_epochs=5):
+        return max(self.initial * decay_rate ** x * 0.5 * (1. + math.cos((2. * math.pi * x * n_epochs) / MAX_FRAMES)),
+                   self.final)
 
 
 def play_one_episode(
         env,
         session,
         total_t,
-        episode_num,
-        total_episodes_num,
         model,
         target_model,
         replay_buffer,
         image_tansformer,
         gamma,
-        epsilon_start,
-        epsilon_decay,
-        epsilon_min=0.01,
+        epsilon_scheduler,
         target_upd_period=TARGET_UPD_PERIOD):
     t0 = datetime.now()
     total_training_time = 0
@@ -195,9 +246,7 @@ def play_one_episode(
             print("Copied model parameters to target network. total_t = %s, period = %s" % (
                 total_t, target_upd_period))
 
-        epsilon = decaying_epsilon(episode_num, total_episodes_num, epsilon_decay, initial_value=epsilon_start,
-                                   min_value=epsilon_min)
-
+        epsilon = epsilon_scheduler.get_epsilon(total_t)
         action = model.sample_action(state, epsilon)
         raw_frame, reward, done, _ = env.step(action)
         frame = image_tansformer.transform(raw_frame, session)
@@ -234,32 +283,25 @@ def populate_experience(env, image_transformer, replay_buffer, sess):
     env.close()
 
 
-def train_ddqn_model(env, num_episodes, batch_size, gamma, epsilon_decay_rate=300000,
-                     weights_file_name='ddqn_weights.npz'):
+def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='ddqn_weights.npz'):
     replay_buffer = ReplayBuffer(MAX_EXPERIENCES, batch_size, (IMG_SIZE, IMG_SIZE), FRAMES_IN_STATE)
     episode_rewards = np.zeros(num_episodes)
 
-    epsilon_start = 1.0
-    epsilon_min = 0.01
-    epsilon_change = epsilon_decay_rate
-
     # Create models
-    conv_layer_sizes = [(32, 8, 4), (64, 4, 2), (64, 3, 1)]
-    hidden_layer_sizes = [512]
+    hidden_layer_sizes = [1024]
 
     model = DDQN(
         ACTIONS_NUM,
-        conv_layer_sizes,
         hidden_layer_sizes,
         scope="model")
 
     target_model = DDQN(
         ACTIONS_NUM,
-        conv_layer_sizes,
         hidden_layer_sizes,
-        scope="target_model"
-    )
+        scope="target_model")
+
     image_transformer = ImageTransformer(out_shape=(IMG_SIZE, IMG_SIZE), crop_boundaries=(34, 0, 160, 160))
+    epsilon_scheduler = EpsilonGreedyScheduler(EpsilonDecay.LINEAR)
 
     total_t = 0
 
@@ -277,16 +319,12 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, epsilon_decay_rate=30
                 env,
                 sess,
                 total_t,
-                i,
-                num_episodes,
                 model,
                 target_model,
                 replay_buffer,
                 image_transformer,
                 gamma,
-                epsilon_start,
-                epsilon_change,
-                epsilon_min,
+                epsilon_scheduler
             )
             episode_rewards[i] = episode_reward
 
