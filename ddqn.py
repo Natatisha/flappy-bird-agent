@@ -1,4 +1,5 @@
 import sys
+import os
 
 import tensorflow as tf
 import numpy as np
@@ -8,6 +9,8 @@ import math
 
 from image_transformer import ImageTransformer
 from replay_buffer import ReplayBuffer
+
+from utils import generate_gif
 
 
 class EpsilonDecay(Enum):
@@ -41,6 +44,7 @@ EPSILON_ANNEALING_FRAMES = 1e6
 MAX_FRAMES = 2e6
 OBS_SHAPE = (210, 160, 3)
 CROP_BOUNDS = (30, 0, 170, 160)
+UPDATE_FREQ = 4
 
 # Breakout
 # EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
@@ -60,12 +64,20 @@ TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 84
 ACTIONS_NUM = 6
 FRAMES_IN_STATE = 4
-SAVE_EACH = 1000
+SAVE_EACH = 1
+
+SAVE_MODEL_PATH = "outputs/"
+SUMMARIES = "summaries"
+RUNID = 'run_1'
+os.makedirs(SAVE_MODEL_PATH, exist_ok=True)
+os.makedirs(os.path.join(SUMMARIES, RUNID), exist_ok=True)
+SUMM_WRITER = tf.summary.FileWriter(os.path.join(SUMMARIES, RUNID))
 
 
 class DDQN:
 
-    def __init__(self, actions_n, hidden_layers_size, scope, learning_rate=1e-6, frame_shape=(IMG_SIZE, IMG_SIZE),
+    def __init__(self, actions_n, hidden_layers_size, scope, restore_file=None, session=None, learning_rate=1e-6,
+                 frame_shape=(IMG_SIZE, IMG_SIZE),
                  agent_history_length=FRAMES_IN_STATE):
         self.actions_n = actions_n
         self.scope = scope
@@ -102,8 +114,9 @@ class DDQN:
                                          kernel_initializer=tf.variance_scaling_initializer(scale=2),
                                          name='value')
 
-            self.q_values = self.value + tf.subtract(self.advantage,
-                                                     tf.reduce_mean(self.advantage, axis=1, keep_dims=True))
+            self.q_values = tf.add(self.value,
+                                   tf.subtract(self.advantage, tf.reduce_mean(self.advantage, axis=1, keep_dims=True)),
+                                   name='q_values')
             self.best_action = tf.argmax(self.q_values, axis=1)
 
             self.actions = tf.placeholder(dtype=tf.int32, shape=(None,), name='actions')
@@ -153,18 +166,9 @@ class DDQN:
         else:
             return self.get_best_action([state])[0]
 
-    def save(self, file_name='tf_dqn_weights.npz'):
-        params = [t for t in tf.trainable_variables() if t.name.startswith(self.scope)]
-        params = self.sess.run(params)
-        np.savez(file_name, *params)
-
-    def load(self, file_name='tf_dqn_weights.npz'):
-        params = [t for t in tf.trainable_variables() if t.name.startswith(self.scope)]
-        npz = np.load(file_name)
-        ops = []
-        for p, (_, v) in zip(params, npz.iteritems()):
-            ops.append(p.assign(v))
-        self.sess.run(ops)
+    def save(self, frame_number, path=SAVE_MODEL_PATH):
+        self.saver = tf.train.Saver()
+        self.saver.save(self.sess, path + 'my_model', global_step=frame_number)
 
 
 def update_state(state, new_frame):
@@ -262,7 +266,8 @@ def play_one_episode(
         replay_buffer.add_experience(action, frame, reward, done)
 
         t0_2 = datetime.now()
-        loss = learn(model, target_model, replay_buffer, gamma)
+        if total_t % UPDATE_FREQ == 0:
+            loss = learn(model, target_model, replay_buffer, gamma)
         dt = datetime.now() - t0_2
 
         total_training_time += dt.total_seconds()
@@ -271,7 +276,7 @@ def play_one_episode(
 
         state = next_state
 
-    return total_t, episode_reward, (datetime.now() - t0).total_seconds(), \
+    return total_t, episode_reward, loss, (datetime.now() - t0).total_seconds(), \
            num_steps, total_training_time / num_steps, epsilon
 
 
@@ -289,9 +294,10 @@ def populate_experience(env, image_transformer, replay_buffer, sess):
     env.close()
 
 
-def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='ddqn_weights.npz'):
+def train_ddqn_model(env, num_episodes, batch_size, gamma):
     replay_buffer = ReplayBuffer(MAX_EXPERIENCES, batch_size, (IMG_SIZE, IMG_SIZE), FRAMES_IN_STATE)
     episode_rewards = np.zeros(num_episodes)
+    losses = []
 
     model = DDQN(
         ACTIONS_NUM,
@@ -309,6 +315,14 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='dd
 
     total_t = 0
 
+    with tf.name_scope('Performance'):
+        LOSS_PH = tf.placeholder(tf.float32, shape=None, name='loss_summary')
+        LOSS_SUMMARY = tf.summary.scalar('loss', LOSS_PH)
+        REWARD_PH = tf.placeholder(tf.float32, shape=None, name='reward_summary')
+        REWARD_SUMMARY = tf.summary.scalar('reward', REWARD_PH)
+
+    PERFORMANCE_SUMMARIES = tf.summary.merge([LOSS_SUMMARY, REWARD_SUMMARY])
+
     with tf.Session() as sess:
         model.set_session(sess)
         target_model.set_session(sess)
@@ -319,7 +333,7 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='dd
         # Play a number of episodes and learn!
         t0 = datetime.now()
         for i in range(num_episodes):
-            total_t, episode_reward, duration, num_steps_in_episode, time_per_step, epsilon = play_one_episode(
+            total_t, episode_reward, loss, duration, num_steps_in_episode, time_per_step, epsilon = play_one_episode(
                 env,
                 sess,
                 total_t,
@@ -332,10 +346,16 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='dd
             )
             episode_rewards[i] = episode_reward
 
-            if (i + 1) % SAVE_EACH == 0:
-                model.save(file_name=weights_file_name)
+            if loss is not None:
+                losses.append(loss)
 
             last_100_avg = episode_rewards[max(0, i - 100):i + 1].mean()
+
+            if len(episode_rewards) % SAVE_EACH == 0:
+                summ = sess.run(PERFORMANCE_SUMMARIES, feed_dict={LOSS_PH: np.mean(losses),
+                                                                  REWARD_PH: last_100_avg})
+                SUMM_WRITER.add_summary(summ, total_t)
+
             print("Episode:", i,
                   "Duration:", duration,
                   "Num steps:", num_steps_in_episode,
@@ -347,6 +367,6 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name='dd
             sys.stdout.flush()
         print("Total duration:", str(datetime.now() - t0))
 
-        model.save(file_name=weights_file_name)
+        model.save(total_t)
 
     return model, episode_rewards
