@@ -8,7 +8,6 @@ from utils import plot_rewards, save_rewards, load_rewards
 DEFAULT_GAMMA = 0.99
 DEFAULT_BATCH_SIZE = 32
 DEFAULT_NUM_EPISODES = 3500
-DEFAULT_EPS_DECAY = 300000
 
 
 def get_arguments():
@@ -32,7 +31,6 @@ def get_arguments():
     parser.add_argument('--rewards_out', action='store', nargs=1, default=['ddqn_rewards.npy'],
                         help="Name of the file with saved rewards obtained during training. Should have .npy extension."
                              " Default is 'ddqn_rewards.npy'")
-    parser.add_argument('--eps_decay_rate', '-e', action='store', nargs=1, default=[DEFAULT_EPS_DECAY], type=int)
     return vars(parser.parse_args())
 
 
@@ -46,11 +44,8 @@ if __name__ == '__main__':
     record_each = args['record_frequency'][0]
     model_out = args['model_out'][0]
     rewards_out = args['rewards_out'][0]
-    decay = args['eps_decay_rate'][0]
 
     env = gym.make("PongDeterministic-v4")
-    if record_video:
-        env = Monitor(env, "./ddpq_videos", video_callable=lambda episode_id: episode_id % record_each == 0, force=True)
 
-    model, episode_rewards = train_ddqn_model(env, num_episodes, batch_size, gamma, weights_file_name=model_out)
+    model, episode_rewards = train_ddqn_model(env, num_episodes, batch_size, gamma)
     save_rewards(episode_rewards, file_name=rewards_out)

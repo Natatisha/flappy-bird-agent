@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import imageio
 
 
 def smooth(x):
@@ -26,3 +27,8 @@ def save_rewards(episode_rewards, file_name='ddqn_rewards.npy'):
 
 def load_rewards(file_name='ddqn_rewards.npy'):
     return np.load(file_name)
+
+
+def generate_gif(frames_for_gif, reward, path):
+    imageio.mimsave('{}ATARI_reward_{}.gif'.format(path, reward),
+                    frames_for_gif, duration=1 / 30)
