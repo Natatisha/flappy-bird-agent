@@ -8,10 +8,15 @@ from image_transformer import ImageTransformer
 from ddqn import update_state
 from utils import generate_gif
 
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path  # python 2 backport
+
 DEFAULT_GIF_PATH = 'gifs/'
 DEFAULT_NUM_EVAL_EPISODES = 100
 
-os.makedirs(DEFAULT_GIF_PATH, exist_ok=True)
+Path(DEFAULT_GIF_PATH).mkdir(exist_ok=True)
 
 
 def get_arguments():

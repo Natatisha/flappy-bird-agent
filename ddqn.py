@@ -1,5 +1,10 @@
 import sys
 import os
+try:
+  from pathlib import Path
+except ImportError:
+  from pathlib2 import Path  # python 2 backport
+
 
 import tensorflow as tf
 import numpy as np
@@ -67,10 +72,11 @@ FRAMES_IN_STATE = 4
 SAVE_EACH = 1
 
 SAVE_MODEL_PATH = "outputs/"
-SUMMARIES = "summaries"
+SUMMARIES = "summaries/"
 RUNID = 'run_1'
-os.makedirs(SAVE_MODEL_PATH, exist_ok=True)
-os.makedirs(os.path.join(SUMMARIES, RUNID), exist_ok=True)
+
+Path(SAVE_MODEL_PATH).mkdir(exist_ok=True)
+Path(SUMMARIES+RUNID).mkdir(parents=True, exist_ok=True)
 SUMM_WRITER = tf.summary.FileWriter(os.path.join(SUMMARIES, RUNID))
 
 
