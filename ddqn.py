@@ -1,10 +1,10 @@
 import sys
 import os
-try:
-  from pathlib import Path
-except ImportError:
-  from pathlib2 import Path  # python 2 backport
 
+try:
+    from pathlib import Path
+except ImportError:
+    from pathlib2 import Path  # python 2 backport
 
 import tensorflow as tf
 import numpy as np
@@ -26,8 +26,8 @@ class EpsilonDecay(Enum):
 
 # constants
 # for testing
-MAX_EXPERIENCES = 10000
-MIN_EXPERIENCES = 100
+# MAX_EXPERIENCES = 10000
+# MIN_EXPERIENCES = 100
 
 # prod
 # Flappy
@@ -45,10 +45,10 @@ EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
 EPSILON_INITIAL = 1.
 EPSILON_CHECKPOINT = 0.1
 EPSILON_FINAL = 0.01
-EPSILON_ANNEALING_FRAMES = 1e6
-MAX_FRAMES = 2e6
+EPSILON_ANNEALING_FRAMES = 2e6
+MAX_FRAMES = 4e6
 OBS_SHAPE = (210, 160, 3)
-CROP_BOUNDS = (30, 0, 170, 160)
+CROP_BOUNDS = (30, 0, 160, 160)
 UPDATE_FREQ = 4
 
 # Breakout
@@ -61,28 +61,28 @@ UPDATE_FREQ = 4
 # OBS_SHAPE = (210, 160, 3)
 # CROP_BOUNDS = (34, 0, 160, 160)
 
-# MAX_EXPERIENCES = 500000
-# MIN_EXPERIENCES = 50000
+MAX_EXPERIENCES = 1e6
+MIN_EXPERIENCES = 50000
 
 HIDDEN_LAYER_SIZE = 1024
 TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 84
 ACTIONS_NUM = 6
 FRAMES_IN_STATE = 4
-SAVE_EACH = 1
+SAVE_EACH = 1000
 
 SAVE_MODEL_PATH = "outputs/"
 SUMMARIES = "summaries/"
 RUNID = 'run_1'
 
 Path(SAVE_MODEL_PATH).mkdir(exist_ok=True)
-Path(SUMMARIES+RUNID).mkdir(parents=True, exist_ok=True)
+Path(SUMMARIES + RUNID).mkdir(parents=True, exist_ok=True)
 SUMM_WRITER = tf.summary.FileWriter(os.path.join(SUMMARIES, RUNID))
 
 
 class DDQN:
 
-    def __init__(self, actions_n, hidden_layers_size, scope, restore_file=None, session=None, learning_rate=1e-6,
+    def __init__(self, actions_n, hidden_layers_size, scope, learning_rate=1e-6,
                  frame_shape=(IMG_SIZE, IMG_SIZE),
                  agent_history_length=FRAMES_IN_STATE):
         self.actions_n = actions_n
@@ -172,9 +172,9 @@ class DDQN:
         else:
             return self.get_best_action([state])[0]
 
-    def save(self, frame_number, path=SAVE_MODEL_PATH):
+    def save(self, frame_number, path=SAVE_MODEL_PATH, write_meta_graph=True):
         self.saver = tf.train.Saver()
-        self.saver.save(self.sess, path + 'my_model', global_step=frame_number)
+        self.saver.save(self.sess, path + 'my_model', global_step=frame_number, write_meta_graph=write_meta_graph)
 
 
 def update_state(state, new_frame):
@@ -361,6 +361,7 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
                 summ = sess.run(PERFORMANCE_SUMMARIES, feed_dict={LOSS_PH: np.mean(losses),
                                                                   REWARD_PH: last_100_avg})
                 SUMM_WRITER.add_summary(summ, total_t)
+                model.save(total_t, write_meta_graph=total_t <= SAVE_EACH) #save meta graph for the first time only
 
             print("Episode:", i,
                   "Duration:", duration,
