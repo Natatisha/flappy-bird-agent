@@ -26,8 +26,8 @@ class EpsilonDecay(Enum):
 
 # constants
 # for testing
-# MAX_EXPERIENCES = 10000
-# MIN_EXPERIENCES = 100
+MAX_EXPERIENCES = 10000
+MIN_EXPERIENCES = 100
 
 # prod
 # Flappy
@@ -61,15 +61,17 @@ UPDATE_FREQ = 4
 # OBS_SHAPE = (210, 160, 3)
 # CROP_BOUNDS = (34, 0, 160, 160)
 
-MAX_EXPERIENCES = 1000000
-MIN_EXPERIENCES = 50000
+# MAX_EXPERIENCES = 1000000
+# MIN_EXPERIENCES = 50000
 
 HIDDEN_LAYER_SIZE = 1024
 TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 84
 ACTIONS_NUM = 6
 FRAMES_IN_STATE = 4
-SAVE_EACH = 1000
+SAVE_REWARD_EACH = 1000
+# SAVE_MODEL_EACH = 100000
+SAVE_MODEL_EACH = 1
 
 SAVE_MODEL_PATH = "outputs/"
 SUMMARIES = "summaries/"
@@ -133,6 +135,7 @@ class DDQN:
             self.train_optimizer = tf.train.AdamOptimizer(self.lr).minimize(self.cost)
 
             self.sess = None
+            self.saver = None
 
     def copy_from(self, other):
         mine = [t for t in tf.trainable_variables() if t.name.startswith(self.scope)]
@@ -173,7 +176,8 @@ class DDQN:
             return self.get_best_action([state])[0]
 
     def save(self, frame_number, path=SAVE_MODEL_PATH, write_meta_graph=True):
-        self.saver = tf.train.Saver()
+        if self.saver is None:
+            self.saver = tf.train.Saver(max_to_keep=4)
         self.saver.save(self.sess, path + 'my_model', global_step=frame_number, write_meta_graph=write_meta_graph)
 
 
@@ -272,8 +276,8 @@ def play_one_episode(
         replay_buffer.add_experience(action, frame, reward, done)
 
         t0_2 = datetime.now()
-        if total_t % UPDATE_FREQ == 0:
-            loss = learn(model, target_model, replay_buffer, gamma)
+        # if total_t % UPDATE_FREQ == 0:
+        #     loss = learn(model, target_model, replay_buffer, gamma)
         dt = datetime.now() - t0_2
 
         total_training_time += dt.total_seconds()
@@ -357,11 +361,14 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
 
             last_100_avg = episode_rewards[max(0, i - 100):i + 1].mean()
 
-            if len(episode_rewards) % SAVE_EACH == 0:
+            if len(episode_rewards) % SAVE_REWARD_EACH == 0:
                 summ = sess.run(PERFORMANCE_SUMMARIES, feed_dict={LOSS_PH: np.mean(losses),
                                                                   REWARD_PH: last_100_avg})
                 SUMM_WRITER.add_summary(summ, total_t)
-                model.save(total_t, write_meta_graph=total_t <= SAVE_EACH) #save meta graph for the first time only
+            if total_t % SAVE_MODEL_EACH == 0:
+                print("Saving the model")
+                # save meta graph for the first time only
+                model.save(len(episode_rewards), write_meta_graph=total_t <= SAVE_MODEL_EACH)
 
             print("Episode:", i,
                   "Duration:", duration,
