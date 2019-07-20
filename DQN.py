@@ -98,8 +98,8 @@ class DQN(object):
 
         # Splitting into value and advantage stream
         self.valuestream, self.advantagestream = tf.split(self.conv4, 2, 3)
-        self.valuestream = tf.layers.flatten(self.valuestream)
-        self.advantagestream = tf.layers.flatten(self.advantagestream)
+        self.valuestream = tf.contrib.layers.flatten(self.valuestream)
+        self.advantagestream = tf.contrib.layers.flatten(self.advantagestream)
         self.advantage = tf.layers.dense(
             inputs=self.advantagestream, units=self.n_actions,
             kernel_initializer=tf.variance_scaling_initializer(scale=2), name="advantage")
@@ -108,7 +108,7 @@ class DQN(object):
             kernel_initializer=tf.variance_scaling_initializer(scale=2), name='value')
 
         # Combining value and advantage into Q-values as described above
-        self.q_values = self.value + tf.subtract(self.advantage, tf.reduce_mean(self.advantage, axis=1, keepdims=True))
+        self.q_values = self.value + tf.subtract(self.advantage, tf.reduce_mean(self.advantage, axis=1, keep_dims=True))
         self.best_action = tf.argmax(self.q_values, 1)
 
         # The next lines perform the parameter update. This will be explained in detail later.
@@ -455,14 +455,13 @@ print("The environment has the following {} actions: {}".format(atari.env.action
 # main DQN and target DQN networks:
 with tf.variable_scope('mainDQN'):
     MAIN_DQN = DQN(atari.env.action_space.n, HIDDEN, LEARNING_RATE)  # (★★)
+    MAIN_DQN_VARS = tf.trainable_variables()
 with tf.variable_scope('targetDQN'):
     TARGET_DQN = DQN(atari.env.action_space.n, HIDDEN)  # (★★)
+    TARGET_DQN_VARS = tf.trainable_variables()
 
 init = tf.global_variables_initializer()
 saver = tf.train.Saver()
-
-MAIN_DQN_VARS = tf.trainable_variables(scope='mainDQN')
-TARGET_DQN_VARS = tf.trainable_variables(scope='targetDQN')
 
 LAYER_IDS = ["conv1", "conv2", "conv3", "conv4", "denseAdvantage",
              "denseAdvantageBias", "denseValue", "denseValueBias"]
@@ -524,12 +523,12 @@ def train():
                     episode_reward_sum += reward
 
                     # Clip the reward
-                    clipped_reward = clip_reward(reward)
+                    # clipped_reward = clip_reward(reward)
 
                     # (7★) Store transition in the replay memory
                     my_replay_memory.add_experience(action=action,
                                                     frame=processed_new_frame[:, :, 0],
-                                                    reward=clipped_reward,
+                                                    reward=reward,
                                                     terminal=terminal_life_lost)
 
                     if frame_number % UPDATE_FREQ == 0 and frame_number > REPLAY_MEMORY_START_SIZE:
@@ -559,7 +558,8 @@ def train():
                     summ_param = sess.run(PARAM_SUMMARIES)
                     SUMM_WRITER.add_summary(summ_param, frame_number)
 
-                    print(len(rewards), frame_number, np.mean(rewards[-100:]))
+                    print("Episode {}, frame number {}, last 100 episodes average reward {}"
+                          .format(len(rewards), frame_number, np.mean(rewards[-100:])))
                     with open('rewards.dat', 'a') as reward_file:
                         print(len(rewards), frame_number,
                               np.mean(rewards[-100:]), file=reward_file)
