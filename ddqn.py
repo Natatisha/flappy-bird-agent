@@ -96,30 +96,48 @@ class DDQN:
                                     name='X')
             self.X_scaled = self.X / 255
 
-            self.conv1 = tf.layers.conv2d(self.X_scaled, filters=32, kernel_size=[8, 8], strides=4,
-                                          kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
-                                          activation=tf.nn.relu, use_bias=False, name='conv1')
-            self.conv2 = tf.layers.conv2d(self.conv1, filters=64, kernel_size=[4, 4], strides=2,
-                                          kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
-                                          activation=tf.nn.relu, use_bias=False, name='conv2')
-            self.conv3 = tf.layers.conv2d(self.conv2, filters=64, kernel_size=[3, 3], strides=1,
-                                          kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
-                                          activation=tf.nn.relu, use_bias=False, name='conv3')
-            self.conv4 = tf.layers.conv2d(self.conv3, filters=hidden_layers_size, kernel_size=[7, 7], strides=1,
-                                          kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
-                                          activation=tf.nn.relu, use_bias=False, name='conv4')
+            # self.conv1 = tf.layers.conv2d(self.X_scaled, filters=32, kernel_size=[8, 8], strides=4,
+            #                               kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
+            #                               activation=tf.nn.relu, use_bias=False, name='conv1')
+            # self.conv2 = tf.layers.conv2d(self.conv1, filters=64, kernel_size=[4, 4], strides=2,
+            #                               kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
+            #                               activation=tf.nn.relu, use_bias=False, name='conv2')
+            # self.conv3 = tf.layers.conv2d(self.conv2, filters=64, kernel_size=[3, 3], strides=1,
+            #                               kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
+            #                               activation=tf.nn.relu, use_bias=False, name='conv3')
+            # self.conv4 = tf.layers.conv2d(self.conv3, filters=hidden_layers_size, kernel_size=[7, 7], strides=1,
+            #                               kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
+            #                               activation=tf.nn.relu, use_bias=False, name='conv4')
+
+            self.conv1 = tf.contrib.layers.conv2d(self.X_scaled, 32, kernel_size=[8, 8], stride=4,
+                                                  weights_initializer=tf.variance_scaling_initializer(scale=2),
+                                                  padding='VALID', activation_fn=tf.nn.relu, biases_initializer=None,
+                                                  scope='conv1')
+            self.conv2 = tf.contrib.layers.conv2d(self.conv1, 64, kernel_size=[4, 4], stride=2,
+                                                  weights_initializer=tf.variance_scaling_initializer(scale=2),
+                                                  padding='VALID', activation_fn=tf.nn.relu, biases_initializer=None,
+                                                  scope='conv2')
+            self.conv3 = tf.contrib.layers.conv2d(self.conv2, 64, kernel_size=[3, 3], stride=1,
+                                                  weights_initializer=tf.variance_scaling_initializer(scale=2),
+                                                  padding='VALID', activation_fn=tf.nn.relu, biases_initializer=None,
+                                                  scope='conv3')
+            self.conv4 = tf.contrib.layers.conv2d(self.conv3, hidden_layers_size, kernel_size=[7, 7], stride=1,
+                                                  weights_initializer=tf.variance_scaling_initializer(scale=2),
+                                                  padding='VALID', activation_fn=tf.nn.relu, biases_initializer=None,
+                                                  scope='conv4')
 
             self.advantagestream, self.valuestream = tf.split(self.conv4, 2, 3)
 
             self.advantagestream = tf.contrib.layers.flatten(self.advantagestream)
             self.valuestream = tf.contrib.layers.flatten(self.valuestream)
 
-            self.advantage = tf.layers.dense(self.advantagestream, self.actions_n,
-                                             kernel_initializer=tf.variance_scaling_initializer(scale=2),
-                                             name='advantage')
-            self.value = tf.layers.dense(self.valuestream, 1,
-                                         kernel_initializer=tf.variance_scaling_initializer(scale=2),
-                                         name='value')
+            self.advantage = tf.contrib.layers.fully_connected(self.advantagestream, self.actions_n,
+                                                               weights_initializer=tf.variance_scaling_initializer(
+                                                                   scale=2),
+                                                               scope='advantage')
+            self.value = tf.contrib.layers.fully_connected(self.valuestream, 1,
+                                                           weights_initializer=tf.variance_scaling_initializer(scale=2),
+                                                           scope='value')
 
             self.q_values = tf.add(self.value,
                                    tf.subtract(self.advantage, tf.reduce_mean(self.advantage, axis=1, keep_dims=True)),
@@ -365,7 +383,8 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
                                                                   REWARD_PH: last_100_avg})
                 SUMM_WRITER.add_summary(summ, total_t)
             if len(episode_rewards) % SAVE_MODEL_EACH == 0:
-                model.save(total_t, write_meta_graph=(total_t <= SAVE_MODEL_EACH)) #save meta graph for the first time only
+                model.save(total_t,
+                           write_meta_graph=(total_t <= SAVE_MODEL_EACH))  # save meta graph for the first time only
 
             print("Episode:", i,
                   "Duration:", duration,
