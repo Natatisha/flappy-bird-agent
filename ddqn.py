@@ -50,6 +50,7 @@ MAX_FRAMES = 4e6
 OBS_SHAPE = (210, 160, 3)
 CROP_BOUNDS = (30, 0, 160, 160)
 UPDATE_FREQ = 4
+LEARNING_RATE = 0.00025
 
 # Breakout
 # EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
@@ -329,11 +330,13 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
     model = DDQN(
         ACTIONS_NUM,
         HIDDEN_LAYER_SIZE,
+        learning_rate=LEARNING_RATE,
         scope="model")
 
     target_model = DDQN(
         ACTIONS_NUM,
         HIDDEN_LAYER_SIZE,
+        learning_rate=LEARNING_RATE,
         scope="target_model")
 
     image_transformer = ImageTransformer(origin_shape=OBS_SHAPE, out_shape=(IMG_SIZE, IMG_SIZE),
