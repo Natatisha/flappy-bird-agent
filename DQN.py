@@ -7,6 +7,7 @@ except ImportError:
     from pathlib2 import Path  # python 2 backport
 
 import tensorflow as tf
+import tensorflow.contrib.slim as slim
 import numpy as np
 from datetime import datetime
 from enum import Enum
@@ -79,33 +80,63 @@ class DQN(object):
         self.inputscaled = self.input / 255
 
         # Convolutional layers
-        self.conv1 = tf.layers.conv2d(
-            inputs=self.inputscaled, filters=32, kernel_size=[8, 8], strides=4,
-            kernel_initializer=tf.variance_scaling_initializer(scale=2),
-            padding="valid", activation=tf.nn.relu, use_bias=False, name='conv1')
-        self.conv2 = tf.layers.conv2d(
-            inputs=self.conv1, filters=64, kernel_size=[4, 4], strides=2,
-            kernel_initializer=tf.variance_scaling_initializer(scale=2),
-            padding="valid", activation=tf.nn.relu, use_bias=False, name='conv2')
-        self.conv3 = tf.layers.conv2d(
-            inputs=self.conv2, filters=64, kernel_size=[3, 3], strides=1,
-            kernel_initializer=tf.variance_scaling_initializer(scale=2),
-            padding="valid", activation=tf.nn.relu, use_bias=False, name='conv3')
-        self.conv4 = tf.layers.conv2d(
-            inputs=self.conv3, filters=hidden, kernel_size=[7, 7], strides=1,
-            kernel_initializer=tf.variance_scaling_initializer(scale=2),
-            padding="valid", activation=tf.nn.relu, use_bias=False, name='conv4')
+        # self.conv1 = tf.layers.conv2d(
+        #     inputs=self.inputscaled, filters=32, kernel_size=[8, 8], strides=4,
+        #     kernel_initializer=tf.variance_scaling_initializer(scale=2),
+        #     padding="valid", activation=tf.nn.relu, use_bias=False, name='conv1')
+        # self.conv2 = tf.layers.conv2d(
+        #     inputs=self.conv1, filters=64, kernel_size=[4, 4], strides=2,
+        #     kernel_initializer=tf.variance_scaling_initializer(scale=2),
+        #     padding="valid", activation=tf.nn.relu, use_bias=False, name='conv2')
+        # self.conv3 = tf.layers.conv2d(
+        #     inputs=self.conv2, filters=64, kernel_size=[3, 3], strides=1,
+        #     kernel_initializer=tf.variance_scaling_initializer(scale=2),
+        #     padding="valid", activation=tf.nn.relu, use_bias=False, name='conv3')
+        # self.conv4 = tf.layers.conv2d(
+        #     inputs=self.conv3, filters=hidden, kernel_size=[7, 7], strides=1,
+        #     kernel_initializer=tf.variance_scaling_initializer(scale=2),
+        #     padding="valid", activation=tf.nn.relu, use_bias=False, name='conv4')
+        #
+        # # Splitting into value and advantage stream
+        # self.valuestream, self.advantagestream = tf.split(self.conv4, 2, 3)
+        # self.valuestream = tf.contrib.layers.flatten(self.valuestream)
+        # self.advantagestream = tf.contrib.layers.flatten(self.advantagestream)
+        # self.advantage = tf.layers.dense(
+        #     inputs=self.advantagestream, units=self.n_actions,
+        #     kernel_initializer=tf.variance_scaling_initializer(scale=2), name="advantage")
+        # self.value = tf.layers.dense(
+        #     inputs=self.valuestream, units=1,
+        #     kernel_initializer=tf.variance_scaling_initializer(scale=2), name='value')
 
-        # Splitting into value and advantage stream
-        self.valuestream, self.advantagestream = tf.split(self.conv4, 2, 3)
-        self.valuestream = tf.contrib.layers.flatten(self.valuestream)
-        self.advantagestream = tf.contrib.layers.flatten(self.advantagestream)
-        self.advantage = tf.layers.dense(
-            inputs=self.advantagestream, units=self.n_actions,
-            kernel_initializer=tf.variance_scaling_initializer(scale=2), name="advantage")
-        self.value = tf.layers.dense(
-            inputs=self.valuestream, units=1,
-            kernel_initializer=tf.variance_scaling_initializer(scale=2), name='value')
+        self.conv1 = slim.conv2d(
+            inputs=self.inputscaled, num_outputs=32, kernel_size=[8, 8], stride=[4, 4],
+            padding='VALID',
+            weights_initializer=tf.variance_scaling_initializer(scale=2),
+            biases_initializer=None, scope='conv1')
+        self.conv2 = slim.conv2d(
+            inputs=self.conv1, num_outputs=64, kernel_size=[4, 4], stride=[2, 2], padding='VALID',
+            weights_initializer=tf.variance_scaling_initializer(scale=2),
+            biases_initializer=None, scope='conv2')
+        self.conv3 = slim.conv2d(
+            inputs=self.conv2, num_outputs=64, kernel_size=[3, 3], stride=[1, 1], padding='VALID',
+            weights_initializer=tf.variance_scaling_initializer(scale=2),
+            biases_initializer=None, scope='conv3')
+        self.conv4 = slim.conv2d(
+            inputs=self.conv3, num_outputs=hidden, kernel_size=[7, 7], stride=[1, 1], padding='VALID',
+            weights_initializer=tf.variance_scaling_initializer(scale=2),
+            biases_initializer=None, scope='conv4')
+
+        self.streamAC, self.streamVC = tf.split(self.conv4, 2, 3)
+        self.streamA = slim.flatten(self.streamAC)
+        self.streamV = slim.flatten(self.streamVC)
+
+        self.advantage = slim.fully_connected(self.streamA, n_actions,
+                                              weights_initializer=tf.variance_scaling_initializer(
+                                                  scale=2),
+                                              scope='advantage')
+        self.value = slim.fully_connected(self.streamV, 1,
+                                          weights_initializer=tf.variance_scaling_initializer(scale=2),
+                                          scope='value')
 
         # Combining value and advantage into Q-values as described above
         self.q_values = self.value + tf.subtract(self.advantage, tf.reduce_mean(self.advantage, axis=1, keep_dims=True))
