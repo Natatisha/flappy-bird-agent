@@ -523,12 +523,12 @@ def train():
                     episode_reward_sum += reward
 
                     # Clip the reward
-                    # clipped_reward = clip_reward(reward)
+                    clipped_reward = clip_reward(reward)
 
                     # (7) Store transition in the replay memory
                     my_replay_memory.add_experience(action=action,
                                                     frame=processed_new_frame[:, :, 0],
-                                                    reward=reward,
+                                                    reward=clipped_reward,
                                                     terminal=terminal_life_lost)
 
                     if frame_number % UPDATE_FREQ == 0 and frame_number > REPLAY_MEMORY_START_SIZE:
@@ -560,9 +560,9 @@ def train():
 
                     print("Episode {}, frame number {}, last 100 episodes average reward {}"
                           .format(len(rewards), frame_number, np.mean(rewards[-100:])))
-                    with open('rewards.dat', 'a') as reward_file:
-                        print(len(rewards), frame_number,
-                              np.mean(rewards[-100:]), file=reward_file)
+                    # with open('rewards.dat', 'a') as reward_file:
+                    #     print(len(rewards), frame_number,
+                    #           np.mean(rewards[-100:]), file=reward_file)
 
             ########################
             ###### Evaluation ######
@@ -609,8 +609,8 @@ def train():
             # Show the evaluation score in tensorboard
             summ = sess.run(EVAL_SCORE_SUMMARY, feed_dict={EVAL_SCORE_PH: np.mean(eval_rewards)})
             SUMM_WRITER.add_summary(summ, frame_number)
-            with open('rewardsEval.dat', 'a') as eval_reward_file:
-                print(frame_number, np.mean(eval_rewards), file=eval_reward_file)
+            # with open('rewardsEval.dat', 'a') as eval_reward_file:
+            #     print(frame_number, np.mean(eval_rewards), file=eval_reward_file)
 
 
 if __name__ == "__main__":
