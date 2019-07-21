@@ -29,6 +29,6 @@ def load_rewards(file_name='ddqn_rewards.npy'):
     return np.load(file_name)
 
 
-def generate_gif(frames_for_gif, reward, path):
-    imageio.mimsave('{}ATARI_reward_{}.gif'.format(path, reward),
+def generate_gif(frames_for_gif, frame, reward, path):
+    imageio.mimsave('{}ATARI_{}_reward_{}.gif'.format(path, frame, reward),
                     frames_for_gif, duration=1 / 30)

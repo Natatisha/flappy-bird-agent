@@ -598,7 +598,7 @@ def train():
 
             print("Evaluation score:\n", np.mean(eval_rewards))
             try:
-                generate_gif(frames_for_gif, eval_rewards[0], PATH)
+                generate_gif(frames_for_gif, epoch_frame, eval_rewards[0], PATH)
             except IndexError:
                 print("No evaluation game finished")
 
@@ -654,5 +654,5 @@ if __name__ == "__main__":
             atari.env.close()
             print("The total reward is {}".format(episode_reward_sum))
             print("Creating gif...")
-            generate_gif(0, frames_for_gif, episode_reward_sum, gif_path)
+            generate_gif(frames_for_gif, 0, episode_reward_sum, gif_path)
             print("Gif created, check the folder {}".format(gif_path))
