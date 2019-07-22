@@ -48,7 +48,7 @@ if __name__ == '__main__':
     rewards_out = args['rewards_out'][0]
     decay = args['eps_decay_rate'][0]
 
-    env = gym.make("FlappyBird-v0")
+    env = gym.make("Pong-v0")
     if record_video:
         env = Monitor(env, "./ddpq_videos", video_callable=lambda episode_id: episode_id % record_each == 0, force=True)
 

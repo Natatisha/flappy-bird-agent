@@ -22,12 +22,12 @@ class EpsilonDecay(Enum):
 # MIN_EXPERIENCES = 100
 
 # prod
-EPSILON_DECAY_TYPE = EpsilonDecay.EXPONENTIAL
+EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
 MAX_EXPERIENCES = 500000
 MIN_EXPERIENCES = 50000
 TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 80
-ACTIONS_NUM = 2
+ACTIONS_NUM = 6
 FRAMES_IN_STATE = 4
 SAVE_EACH = 1000
 
@@ -258,7 +258,8 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma, epsilon_decay_rate=30
         hidden_layer_sizes,
         scope="target_model"
     )
-    image_transformer = ImageTransformer(out_shape=(IMG_SIZE, IMG_SIZE))
+    image_transformer = ImageTransformer(origin_shape=(210, 160, 3), crop_boundaries=(33, 0, 160, 160),
+                                         out_shape=(IMG_SIZE, IMG_SIZE))
 
     total_t = 0
 
