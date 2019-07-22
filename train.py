@@ -45,7 +45,7 @@ if __name__ == '__main__':
     model_out = args['model_out'][0]
     rewards_out = args['rewards_out'][0]
 
-    env = gym.make("PongDeterministic-v4")
+    env = gym.make("Pong-v0")
 
     model, episode_rewards = train_ddqn_model(env, num_episodes, batch_size, gamma)
     save_rewards(episode_rewards, file_name=rewards_out)
