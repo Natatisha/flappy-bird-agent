@@ -45,8 +45,8 @@ EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
 EPSILON_INITIAL = 1.
 EPSILON_CHECKPOINT = 0.1
 EPSILON_FINAL = 0.01
-EPSILON_ANNEALING_FRAMES = 2e6
-MAX_FRAMES = 4e6
+EPSILON_ANNEALING_FRAMES = 1e6
+MAX_FRAMES = 2e6
 OBS_SHAPE = (210, 160, 3)
 CROP_BOUNDS = (30, 0, 160, 160)
 UPDATE_FREQ = 4
@@ -71,7 +71,7 @@ IMG_SIZE = 84
 ACTIONS_NUM = 6
 FRAMES_IN_STATE = 4
 SAVE_REWARD_EACH = 1000
-SAVE_MODEL_EACH = 100000
+SAVE_MODEL_EACH = 500000
 
 SAVE_MODEL_PATH = "outputs/"
 SUMMARIES = "summaries/"
@@ -294,8 +294,8 @@ def play_one_episode(
         replay_buffer.add_experience(action, frame, reward, done)
 
         t0_2 = datetime.now()
-        if total_t % UPDATE_FREQ == 0:
-            loss = learn(model, target_model, replay_buffer, gamma)
+        # if total_t % UPDATE_FREQ == 0:
+        loss = learn(model, target_model, replay_buffer, gamma)
         dt = datetime.now() - t0_2
 
         total_training_time += dt.total_seconds()
@@ -360,7 +360,6 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
 
         populate_experience(env, image_transformer, replay_buffer, sess)
 
-        # Play a number of episodes and learn!
         t0 = datetime.now()
         for i in range(num_episodes):
             total_t, episode_reward, loss, duration, num_steps_in_episode, time_per_step, epsilon = play_one_episode(
@@ -389,6 +388,8 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
                 model.save(total_t,
                            write_meta_graph=(total_t <= SAVE_MODEL_EACH))  # save meta graph for the first time only
 
+                evaluate_model(env, image_transformer, model, sess, total_t)
+
             print("Episode:", i,
                   "Duration:", duration,
                   "Num steps:", num_steps_in_episode,
@@ -403,3 +404,29 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
         model.save(total_t)
 
     return model, episode_rewards
+
+
+def evaluate_model(env, image_transformer, model, sess, total_t):
+    # Evaluate model
+    frames_eval = []
+    eval_reward = 0
+    obs = env.reset()
+    frames_eval.append(obs)
+    frame = image_transformer.transform(obs, sess)
+    state = np.stack([frame] * FRAMES_IN_STATE, axis=2)
+    done = False
+    while not done:
+        action = model.sample_action(state, 0.)
+        next_frame, reward, done, _ = env.step(action)
+        frame = image_transformer.transform(next_frame, sess)
+        next_state = update_state(state, frame)
+        state = next_state
+        eval_reward += reward
+        frames_eval.append(next_frame)
+        if done:
+            gif = False  # Save only the first game of the evaluation as a gif
+    print("Evaluation score:\n", eval_reward)
+    try:
+        generate_gif(frames_eval, total_t, eval_reward, SAVE_MODEL_PATH)
+    except IndexError:
+        print("No evaluation game finished")
