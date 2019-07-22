@@ -102,7 +102,7 @@ class DDQN:
 
     def sample_action(self, states, eps):
         if np.random.random() < eps:
-            return np.random.choice(self.actions_n, p=[0.6, 0.4])  # better to act 1 time in 5 steps
+            return np.random.choice(self.actions_n)  # better to act 1 time in 5 steps
         else:
             return np.argmax(self.predict([states])[0])
 
@@ -226,7 +226,7 @@ def populate_experience(env, image_transformer, replay_buffer, sess):
 
         action = np.random.choice(ACTIONS_NUM)
         obs, reward, done, _ = env.step(action)
-        obs_small = image_transformer.transform(obs, sess)  # not used anymore
+        obs_small = image_transformer.transform(obs, sess)
         replay_buffer.add_experience(action, obs_small, reward, done)
         if done:
             env.reset()
