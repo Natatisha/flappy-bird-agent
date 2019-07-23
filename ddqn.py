@@ -26,8 +26,8 @@ class EpsilonDecay(Enum):
 
 # constants
 # for testing
-# MAX_EXPERIENCES = 10000
-# MIN_EXPERIENCES = 100
+MAX_EXPERIENCES = 10000
+MIN_EXPERIENCES = 100
 
 # prod
 # Flappy
@@ -50,7 +50,7 @@ MAX_FRAMES = 2e6
 OBS_SHAPE = (210, 160, 3)
 CROP_BOUNDS = (33, 0, 160, 160)
 UPDATE_FREQ = 4
-LEARNING_RATE = 0.00025
+ACTIONS_NUM = 4
 
 # Breakout
 # EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
@@ -61,17 +61,18 @@ LEARNING_RATE = 0.00025
 # MAX_FRAMES = 2e6
 # OBS_SHAPE = (210, 160, 3)
 # CROP_BOUNDS = (34, 0, 160, 160)
+# ACTIONS_NUM = 4
 
-MAX_EXPERIENCES = 1000000
-MIN_EXPERIENCES = 50000
+# MAX_EXPERIENCES = 1000000
+# MIN_EXPERIENCES = 50000
 
-HIDDEN_LAYER_SIZE = 1024
+HIDDEN_LAYER_SIZE = 512
 TARGET_UPD_PERIOD = 10000
-IMG_SIZE = 84
-ACTIONS_NUM = 6
+IMG_SIZE = 80
+LEARNING_RATE = 1e-5
 FRAMES_IN_STATE = 4
 SAVE_REWARD_EACH = 1000
-SAVE_MODEL_EACH = 500000
+SAVE_MODEL_EACH = 100000
 
 SAVE_MODEL_PATH = "outputs/"
 SUMMARIES = "summaries/"
@@ -97,77 +98,68 @@ class DDQN:
                                     name='X')
             self.X_scaled = self.X / 255
 
-            # self.conv1 = tf.layers.conv2d(self.X_scaled, filters=32, kernel_size=[8, 8], strides=4,
-            #                               kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
-            #                               activation=tf.nn.relu, use_bias=False, name='conv1')
-            # self.conv2 = tf.layers.conv2d(self.conv1, filters=64, kernel_size=[4, 4], strides=2,
-            #                               kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
-            #                               activation=tf.nn.relu, use_bias=False, name='conv2')
-            # self.conv3 = tf.layers.conv2d(self.conv2, filters=64, kernel_size=[3, 3], strides=1,
-            #                               kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
-            #                               activation=tf.nn.relu, use_bias=False, name='conv3')
+            initializer = tf.variance_scaling_initializer(scale=2)
+            padding = "VALID"
+
+            self.conv1 = tf.layers.conv2d(self.X_scaled, filters=32, kernel_size=[8, 8], strides=4,
+                                          kernel_initializer=initializer, padding=padding,
+                                          activation=tf.nn.relu, use_bias=False, name='conv1')
+            self.conv2 = tf.layers.conv2d(self.conv1, filters=64, kernel_size=[4, 4], strides=2,
+                                          kernel_initializer=initializer, padding=padding,
+                                          activation=tf.nn.relu, use_bias=False, name='conv2')
+            self.conv3 = tf.layers.conv2d(self.conv2, filters=64, kernel_size=[3, 3], strides=1,
+                                          kernel_initializer=initializer, padding=padding,
+                                          activation=tf.nn.relu, use_bias=False, name='conv3')
             # self.conv4 = tf.layers.conv2d(self.conv3, filters=hidden_layers_size, kernel_size=[7, 7], strides=1,
-            #                               kernel_initializer=tf.variance_scaling_initializer(scale=2), padding='valid',
+            #                               kernel_initializer=initializer, padding=padding,
             #                               activation=tf.nn.relu, use_bias=False, name='conv4')
 
-            self.conv1 = tf.contrib.layers.conv2d(self.X_scaled, 32, kernel_size=[8, 8], stride=4,
-                                                  weights_initializer=tf.variance_scaling_initializer(scale=2),
-                                                  padding='VALID', activation_fn=tf.nn.relu, biases_initializer=None,
-                                                  scope='conv1')
-            self.conv2 = tf.contrib.layers.conv2d(self.conv1, 64, kernel_size=[4, 4], stride=2,
-                                                  weights_initializer=tf.variance_scaling_initializer(scale=2),
-                                                  padding='VALID', activation_fn=tf.nn.relu, biases_initializer=None,
-                                                  scope='conv2')
-            self.conv3 = tf.contrib.layers.conv2d(self.conv2, 64, kernel_size=[3, 3], stride=1,
-                                                  weights_initializer=tf.variance_scaling_initializer(scale=2),
-                                                  padding='VALID', activation_fn=tf.nn.relu, biases_initializer=None,
-                                                  scope='conv3')
-            self.conv4 = tf.contrib.layers.conv2d(self.conv3, hidden_layers_size, kernel_size=[7, 7], stride=1,
-                                                  weights_initializer=tf.variance_scaling_initializer(scale=2),
-                                                  padding='VALID', activation_fn=tf.nn.relu, biases_initializer=None,
-                                                  scope='conv4')
+            # self.advantagestream, self.valuestream = tf.split(self.conv4, 2, 3)
 
-            self.advantagestream, self.valuestream = tf.split(self.conv4, 2, 3)
-
-            self.advantagestream = tf.contrib.layers.flatten(self.advantagestream)
-            self.valuestream = tf.contrib.layers.flatten(self.valuestream)
-
-            self.advantage = tf.contrib.layers.fully_connected(self.advantagestream, self.actions_n,
-                                                               weights_initializer=tf.variance_scaling_initializer(
-                                                                   scale=2),
-                                                               scope='advantage')
-            self.value = tf.contrib.layers.fully_connected(self.valuestream, 1,
-                                                           weights_initializer=tf.variance_scaling_initializer(scale=2),
-                                                           scope='value')
-
-            self.q_values = tf.add(self.value,
-                                   tf.subtract(self.advantage, tf.reduce_mean(self.advantage, axis=1, keep_dims=True)),
-                                   name='q_values')
-            self.best_action = tf.argmax(self.q_values, axis=1)
+            # self.advantagestream = tf.contrib.layers.flatten(self.advantagestream)
+            # self.valuestream = tf.contrib.layers.flatten(self.valuestream)
+            #
+            # self.advantage = tf.contrib.layers.fully_connected(self.advantagestream, self.actions_n,
+            #                                                    weights_initializer=tf.variance_scaling_initializer(
+            #                                                        scale=2),
+            #                                                    scope='advantage')
+            # self.value = tf.contrib.layers.fully_connected(self.valuestream, 1,
+            #                                                weights_initializer=tf.variance_scaling_initializer(scale=2),
+            #                                                scope='value')
+            #
+            # self.q_values = tf.add(self.value,
+            #                        tf.subtract(self.advantage, tf.reduce_mean(self.advantage, axis=1, keep_dims=True)),
+            #                        name='q_values')
+            self.flatten = tf.reshape(self.conv3, [-1, np.prod(self.conv3.shape.as_list()[1:])], name='flatten')
+            self.fc1 = tf.layers.dense(self.flatten, hidden_layers_size, activation=tf.nn.relu,
+                                       kernel_initializer=initializer, name='fc1')
+            self.q_values = tf.layers.dense(self.fc1, ACTIONS_NUM, activation=tf.nn.relu,
+                                            kernel_initializer=initializer, name='predicted_actions')
 
             self.actions = tf.placeholder(dtype=tf.int32, shape=(None,), name='actions')
             self.target_q = tf.placeholder(dtype=tf.float32, shape=(None,), name='target_q')
 
+            self.best_action = tf.argmax(self.q_values, axis=1)
             self.Q = tf.reduce_sum(self.q_values * tf.one_hot(self.actions, actions_n), axis=1)
             self.cost = tf.reduce_mean(tf.losses.huber_loss(labels=self.target_q, predictions=self.Q))
             self.train_optimizer = tf.train.AdamOptimizer(self.lr).minimize(self.cost)
 
+            self.trainable_vars = self.collect_trainable_vars()
+
             self.sess = None
             self.saver = None
 
+    def collect_trainable_vars(self):
+        collection = tf.GraphKeys.TRAINABLE_VARIABLES
+        variables = tf.get_collection(collection, scope=self.scope)
+        assert len(variables) > 0
+        print("Variables in scope '{}':".format(self.scope))
+        for v in variables:
+            print("\t" + str(v))
+        return variables
+
     def copy_from(self, other):
-        mine = [t for t in tf.trainable_variables() if t.name.startswith(self.scope)]
-        mine = sorted(mine, key=lambda v: v.name)
-
-        other = [t for t in tf.trainable_variables() if t.name.startswith(other.scope)]
-        other = sorted(other, key=lambda v: v.name)
-
-        ops = []
-        for p, q in zip(mine, other):
-            op = p.assign(q)
-            ops.append(op)
-
-        self.sess.run(ops)
+        self.sess.run([v_t.assign(v) for v_t, v in zip(other.trainable_vars, self.trainable_vars)])
 
     def set_session(self, session):
         self.sess = session

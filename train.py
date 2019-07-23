@@ -46,6 +46,7 @@ if __name__ == '__main__':
     rewards_out = args['rewards_out'][0]
 
     env = gym.make("Pong-v0")
+    print(env.unwrapped.get_action_meanings())
 
     model, episode_rewards = train_ddqn_model(env, num_episodes, batch_size, gamma)
     save_rewards(episode_rewards, file_name=rewards_out)
