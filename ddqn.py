@@ -373,10 +373,12 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
             last_100_avg = episode_rewards[max(0, i - 100):i + 1].mean()
 
             if total_t % SAVE_REWARD_EACH == 0:
+                print("Saving rewards to tensorboard")
                 summ = sess.run(PERFORMANCE_SUMMARIES, feed_dict={LOSS_PH: np.mean(losses),
                                                                   REWARD_PH: last_100_avg})
                 SUMM_WRITER.add_summary(summ, total_t)
             if total_t % SAVE_MODEL_EACH == 0:
+                print("Saving the model")
                 model.save(total_t,
                            write_meta_graph=(total_t <= SAVE_MODEL_EACH))  # save meta graph for the first time only
 
