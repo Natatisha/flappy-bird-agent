@@ -45,7 +45,7 @@ if __name__ == '__main__':
     model_out = args['model_out'][0]
     rewards_out = args['rewards_out'][0]
 
-    env = gym.make("Pong-v0")
+    env = gym.make("Breakout-v0")
     print(env.unwrapped.get_action_meanings())
 
     model, episode_rewards = train_ddqn_model(env, num_episodes, batch_size, gamma)
