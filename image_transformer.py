@@ -8,7 +8,7 @@ class ImageTransformer:
         with tf.variable_scope("image_transformer"):
             self.frame_height = out_shape[0]
             self.frame_width = out_shape[1]
-            self.input_img = tf.placeholder(shape=origin_shape, dtype=tf.int8)
+            self.input_img = tf.placeholder(shape=origin_shape, dtype=tf.uint8)
 
             self.output = tf.image.rgb_to_grayscale(self.input_img)
             self.output = tf.image.crop_to_bounding_box(self.output, *crop_boundaries)
