@@ -71,8 +71,8 @@ TARGET_UPD_PERIOD = 10000
 IMG_SIZE = 80
 LEARNING_RATE = 1e-5
 FRAMES_IN_STATE = 4
-SAVE_REWARD_EACH = 1000
-SAVE_MODEL_EACH = 10000
+SAVE_REWARD_EACH = 3
+SAVE_MODEL_EACH = 10
 
 SAVE_MODEL_PATH = "outputs/"
 SUMMARIES = "summaries/"
@@ -372,16 +372,16 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
 
             last_100_avg = episode_rewards[max(0, i - 100):i + 1].mean()
 
-            if total_t % SAVE_REWARD_EACH == 0:
+            if len(episode_rewards) % SAVE_REWARD_EACH == 0:
                 print("Saving rewards to tensorboard")
                 summ = sess.run(PERFORMANCE_SUMMARIES, feed_dict={LOSS_PH: np.mean(losses),
                                                                   REWARD_PH: last_100_avg})
                 SUMM_WRITER.add_summary(summ, total_t)
-            if total_t % SAVE_MODEL_EACH == 0:
+
+            if len(episode_rewards) % SAVE_MODEL_EACH == 0:
                 print("Saving the model")
                 model.save(total_t,
                            write_meta_graph=(total_t <= SAVE_MODEL_EACH))  # save meta graph for the first time only
-
                 evaluate_model(env, image_transformer, model, sess, total_t)
 
             print("Episode:", i,
