@@ -73,7 +73,7 @@ class DDQN:
         self.lr = learning_rate
 
         with tf.variable_scope(self.scope):
-            self.X_scaled = tf.placeholder(dtype=tf.float32,
+            self.X = tf.placeholder(dtype=tf.float32,
                                     shape=(None, frame_shape[0], frame_shape[1], agent_history_length),
                                     name='X')
             # self.X_scaled = self.X / 255
@@ -81,7 +81,7 @@ class DDQN:
             initializer = tf.variance_scaling_initializer(scale=2)
             padding = "VALID"
 
-            self.conv1 = tf.layers.conv2d(self.X_scaled, filters=32, kernel_size=[8, 8], strides=4,
+            self.conv1 = tf.layers.conv2d(self.X, filters=32, kernel_size=[8, 8], strides=4,
                                           kernel_initializer=initializer, padding=padding,
                                           activation=tf.nn.relu, use_bias=False, name='conv1')
             self.conv2 = tf.layers.conv2d(self.conv1, filters=64, kernel_size=[4, 4], strides=2,
