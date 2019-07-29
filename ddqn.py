@@ -37,7 +37,7 @@ EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
 EPSILON_INITIAL = 1.
 EPSILON_CHECKPOINT = 0.1
 EPSILON_FINAL = 0.001
-EPSILON_ANNEALING_FRAMES = 1000000
+EPSILON_ANNEALING_FRAMES = 2000000
 MAX_FRAMES = 30000000
 OBS_SHAPE = (512, 288, 3)
 CROP_BOUNDS = (0, 50, 400, 238)
@@ -156,7 +156,7 @@ class DDQN:
     def sample_action(self, state, eps):
         if np.random.random() < eps:
             # return np.random.choice(self.actions_n, p=[0.6, 0.4])  # better to act 1 time in 5 steps
-            return np.random.choice(self.actions_n)  # better to act 1 time in 5 steps
+            return np.random.choice(self.actions_n)
         else:
             return self.get_best_action([state])[0]
 
@@ -344,10 +344,9 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
 
                     SUMM_WRITER.add_summary(summ, frame_number)
                     loss_list = []
-                    last_100_avg = np.mean(episode_rewards[max(0, len(rewards) - 100):len(rewards)])
                     print("Episode:", len(rewards),
                           "Frame number:", frame_number,
-                          "Avg Reward (Last 100):", "%.3f" % last_100_avg,
+                          "Avg Reward (Last 100):", "%.3f" % np.mean(rewards[-100:]),
                           "Epsilon:", "%.3f" % epsilon)
 
             # Evaluate
