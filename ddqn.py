@@ -155,8 +155,8 @@ class DDQN:
 
     def sample_action(self, state, eps):
         if np.random.random() < eps:
-            # return np.random.choice(self.actions_n, p=[0.6, 0.4])  # better to act 1 time in 5 steps
-            return np.random.choice(self.actions_n)
+            return np.random.choice(self.actions_n, p=[0.6, 0.4])  # better not to act than act
+            # return np.random.choice(self.actions_n)
         else:
             return self.get_best_action([state])[0]
 
@@ -243,12 +243,11 @@ class FlappyBirdWrapper(object):
 
     def step(self, sess, action):
         new_frame, reward, done, _ = self.env.step(action)
-        processed_reward = self._process_reward(reward)
         processed_new_frame = self.image_transformer.transform(new_frame, sess=sess)
         new_state = update_state(self.state, processed_new_frame)
         self.state = new_state
 
-        return processed_new_frame, processed_reward, done, new_frame
+        return processed_new_frame, reward, done, new_frame
 
     def close(self):
         self.env.close()
