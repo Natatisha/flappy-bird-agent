@@ -349,17 +349,17 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
                           "Epsilon:", "%.3f" % epsilon)
 
             # Evaluate
-            terminal = True
+            done = True
             gif = True
             frames_for_gif = []
             eval_rewards = []
             evaluate_frame_number = 0
 
             for _ in range(EVAL_STEPS):
-                if terminal:
+                if done:
                     state = flappy.reset(sess)
                     episode_reward_sum = 0
-                    terminal = False
+                    done = False
 
                 action = model.sample_action(state, 0.)
 
@@ -369,7 +369,7 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
 
                 if gif:
                     frames_for_gif.append(new_frame)
-                if terminal:
+                if done:
                     eval_rewards.append(episode_reward_sum)
                     gif = False  # Save only the first game of the evaluation as a gif
 
