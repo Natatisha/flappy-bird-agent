@@ -73,10 +73,10 @@ class DDQN:
         self.lr = learning_rate
 
         with tf.variable_scope(self.scope):
-            self.X = tf.placeholder(dtype=tf.float32,
+            self.X_scaled = tf.placeholder(dtype=tf.float32,
                                     shape=(None, frame_shape[0], frame_shape[1], agent_history_length),
                                     name='X')
-            self.X_scaled = self.X / 255
+            # self.X_scaled = self.X / 255
 
             initializer = tf.variance_scaling_initializer(scale=2)
             padding = "VALID"
