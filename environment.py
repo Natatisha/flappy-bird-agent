@@ -60,23 +60,23 @@ class FlappyBirdWrapper(object):
         return (player_y, player_vel, next_pipe_dist_to_player, next_pipe_center_y)
 
     def _process_reward(self, state, reward):
-        # if not self.screen_out:
-        #     reward = np.tanh((1. / state[2])) * 100. if reward == 0 else reward
+        if not self.screen_out:
+            dist = self._calc_dist(state[0], state[3], state[2])
+            reward = 0.99**dist if reward == 0 else reward
         return reward
 
     def _process_action(self, action):
         return self.actions['up'] if action > 0 else action
 
     @staticmethod
-    def _calc_dist(player_y, next_pipe_bottom_y, next_pipe_top_y, dist_x):
-        pipe_window_center = (next_pipe_bottom_y - next_pipe_top_y) / 2.
-        dist_y = pipe_window_center - player_y
+    def _calc_dist(player_y, next_pipe_center_y, dist_x):
+        dist_y = next_pipe_center_y - player_y
         dist = math.sqrt(dist_x ** 2 + dist_y ** 2)
         return dist
 
     @staticmethod
     def _rotate_and_flip_img(img):
-        return np.fliplr(np.rot90(img, 3))  # TODO test this
+        return np.fliplr(np.rot90(img, 3))
 
     def step(self, action, train=True):
         action = self._process_action(action)
