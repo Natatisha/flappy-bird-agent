@@ -36,19 +36,29 @@ def to_bin(value, bins):
 
 class FeatureTransformer:
     def __init__(self):
-        self.agent_pos_y = np.linspace(0, 300, 9)
-        self.agent_velocity = np.linspace(-8, 6, 9)
-        self.dist_next = np.linspace(50., 300., 9)
-        self.dist_next_next = np.linspace(145., 500., 9)
+        self.agent_pos_y = np.linspace(0., 300., 9)
+        self.agent_velocity = np.linspace(-8., 6., 9)
+        # self.dist_next = np.linspace(50., 300., 11)
+        # self.dist_next_next = np.linspace(145., 500., 11)
+        self.x_dist_next = np.linspace(60., 300., 9)
+        self.y_center_next = np.linspace(75., 245., 9)
+        self.x_dist_next_next = np.linspace(200., 450., 9)
+        self.y_center_next_next = np.linspace(75., 245., 9)
 
     def transform(self, observation):
         # returns an int
-        agent_pos, agent_vel, dist_next, dist_next_next = observation
+        # agent_pos, agent_vel, dist_next, dist_next_next = observation
+        agent_pos, agent_vel, next_pipe_dist_to_player, next_pipe_center_y, \
+        next_next_pipe_dist_to_player, next_next_pipe_center_y = observation
         return build_state([
             to_bin(agent_pos, self.agent_pos_y),
             to_bin(agent_vel, self.agent_velocity),
-            to_bin(dist_next, self.dist_next),
-            to_bin(dist_next_next, self.dist_next_next),
+            # to_bin(dist_next, self.dist_next),
+            # to_bin(dist_next_next, self.dist_next_next),
+            to_bin(next_pipe_dist_to_player, self.x_dist_next),
+            to_bin(next_pipe_center_y, self.y_center_next),
+            to_bin(next_next_pipe_dist_to_player, self.x_dist_next_next),
+            to_bin(next_next_pipe_center_y, self.y_center_next_next)
         ])
 
 
@@ -235,24 +245,32 @@ def train_q_learning_model(gamma):
     save_rewards(rewards, file_name='q_learning_rewards.npy')
     pos = []
     val = []
-    dist = []
-    next_dist = []
-    for position, velocity, distance, n_distance in states:
+    dist_x = []
+    next_dist_x = []
+    center_y = []
+    center_y_next = []
+    for position, velocity, x_dist, y_cent, x_dist_n, y_cent_n in states:
         pos.append(position)
         val.append(velocity)
-        dist.append(distance)
-        next_dist.append(n_distance)
+        dist_x.append(x_dist)
+        next_dist_x.append(x_dist_n)
+        center_y.append(y_cent)
+        center_y_next.append(y_cent_n)
     print("Position min {} max {}".format(min(pos), max(pos)))
     print("Velocity min {} max {}".format(min(val), max(val)))
-    print("Distance min {} max {}".format(min(dist), max(dist)))
-    print("Next distance min {} max {}".format(min(next_dist), max(next_dist)))
+    print("Distance to the next min {} max {}".format(min(dist_x), max(dist_x)))
+    print("Center y  min {} max {}".format(min(center_y), max(center_y)))
+    print("Distance to the next next min {} max {}".format(min(next_dist_x), max(next_dist_x)))
+    print("Center y next min {} max {}".format(min(center_y_next), max(center_y_next)))
 
-    c1 = Counter(pos)
-    c2 = Counter(val)
-    c3 = Counter(dist)
-    c4 = Counter(next_dist)
+    # c1 = Counter(pos)
+    # c2 = Counter(val)
+    # c3 = Counter(dist_x)
+    # c4 = Counter(center_y)
+    # c5 = Counter(next_dist_x)
+    # c6 = Counter(center_y_next)
 
-    # plot_occurences(c1, "Position")
-    # plot_occurences(c2, "Velocity")
-    # plot_occurences(c3, "Dist")
-    # plot_occurences(c4, "next dist")
+    # plot_occurences(c3, "dist x")
+    # plot_occurences(c4, "center y ")
+    # plot_occurences(c5, "dist x next")
+    # plot_occurences(c6, "center y next")
