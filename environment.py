@@ -101,6 +101,8 @@ class FlappyBirdWrapper(object):
     def close(self):
         pass  # if we'll decide to change environment, for example to OpenAI gym, we'll need this function
 
+    def get_screen(self):
+        return self._rotate_and_flip_img(self.env.getScreenRGB())
 
 # import matplotlib.pyplot as plt
 #

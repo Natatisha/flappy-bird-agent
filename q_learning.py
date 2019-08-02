@@ -228,17 +228,17 @@ def train_q_learning_model(gamma):
             episode_reward_sum += reward
 
             if gif:
-                frames_for_gif.append(new_frame)
+                frames_for_gif.append(flappy.get_screen())
             if done:
                 eval_rewards.append(episode_reward_sum)
                 gif = False  # Save only the first game of the evaluation as a gif
 
         eval_score = np.mean(eval_rewards)
         print("Evaluation score:\n", eval_score)
-        # try:
-        #     generate_gif(frames_for_gif, total_t, eval_score, SAVE_MODEL_PATH)
-        # except IndexError:
-        #     print("No evaluation game finished")
+        try:
+            generate_gif(frames_for_gif, total_t, eval_score, SAVE_MODEL_PATH)
+        except IndexError:
+            print("No evaluation game finished")
 
     model.save()
     save_rewards(rewards, file_name='q_learning_rewards.npy')
