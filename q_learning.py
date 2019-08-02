@@ -36,9 +36,9 @@ def to_bin(value, bins):
 
 class FeatureTransformer:
     def __init__(self):
-        self.agent_pos_y = np.linspace(-15, 330, 9)
-        self.agent_velocity = np.linspace(-16, 10, 9)
-        self.dist_next = np.linspace(0., 375, 9)
+        self.agent_pos_y = np.linspace(0, 300, 9)
+        self.agent_velocity = np.linspace(-8, 6, 9)
+        self.dist_next = np.linspace(50., 300., 9)
         self.dist_next_next = np.linspace(145., 500., 9)
 
     def transform(self, observation):
@@ -152,6 +152,27 @@ def play_one(env, model, epsilon_scheduler, total_t):
     return totalreward, total_t, iters, eps
 
 
+import matplotlib.pyplot as plt
+from collections import Counter
+
+
+def plot_occurences(counter, title):
+    objects = []
+    values = []
+
+    for key, value in sorted(counter.items(), key=lambda item: item[0]):
+        objects.append(key)
+        values.append(value)
+    y_pos = np.arange(len(objects))
+    plt.figure(figsize=(14, 14))
+    plt.bar(y_pos, values, align='center', alpha=0.5)
+    plt.xticks(y_pos, objects)
+    plt.ylabel('Number of occurences')
+    plt.xlabel('Values')
+    plt.title(title)
+    plt.show()
+
+
 def train_q_learning_model(gamma):
     flappy = FlappyBirdWrapper(screen_output=False)
     feature_transformer = FeatureTransformer()
@@ -225,3 +246,13 @@ def train_q_learning_model(gamma):
     print("Velocity min {} max {}".format(min(val), max(val)))
     print("Distance min {} max {}".format(min(dist), max(dist)))
     print("Next distance min {} max {}".format(min(next_dist), max(next_dist)))
+
+    c1 = Counter(pos)
+    c2 = Counter(val)
+    c3 = Counter(dist)
+    c4 = Counter(next_dist)
+
+    # plot_occurences(c1, "Position")
+    # plot_occurences(c2, "Velocity")
+    # plot_occurences(c3, "Dist")
+    # plot_occurences(c4, "next dist")
