@@ -8,35 +8,24 @@ except ImportError:
 
 import tensorflow as tf
 import numpy as np
-from datetime import datetime
-from enum import Enum
-import math
 
+from epsilon import EpsilonGreedyScheduler, EpsilonDecay
+from environment import FlappyBirdWrapper
 from image_transformer import ImageTransformer
 from replay_buffer import ReplayBuffer
 
 from utils import generate_gif
 
-
-class EpsilonDecay(Enum):
-    LINEAR = 0
-    SINUSOID = 1
-    EXPONENTIAL = 2
-
-
 # constants
 # for testing
-# MAX_EXPERIENCES = 10000
-# MIN_EXPERIENCES = 100
-
-MAX_EXPERIENCES = 1000000
-MIN_EXPERIENCES = 50000
+MAX_EXPERIENCES = 10000
+MIN_EXPERIENCES = 100
+#
+# MAX_EXPERIENCES = 1000000
+# MIN_EXPERIENCES = 50000
 
 ACTIONS_NUM = 2
 EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
-EPSILON_INITIAL = 1.
-EPSILON_CHECKPOINT = 0.1
-EPSILON_FINAL = 0.001
 EPSILON_ANNEALING_FRAMES = 2000000
 MAX_FRAMES = 30000000
 OBS_SHAPE = (512, 288, 3)
@@ -184,88 +173,19 @@ def learn(model, target_model, replay_buffer, gamma):
     return loss
 
 
-class EpsilonGreedyScheduler:
-    def __init__(self, decay_type=EPSILON_DECAY_TYPE, epsilon_initial_value=EPSILON_INITIAL,
-                 epsilon_checkpoint=EPSILON_CHECKPOINT, epsilon_final_value=EPSILON_FINAL):
-        self.decay_type = decay_type
-        self.initial = epsilon_initial_value
-        self.final = epsilon_final_value
-        self.chekpoint = epsilon_checkpoint
-
-        self.slope = -(self.initial - self.chekpoint) / EPSILON_ANNEALING_FRAMES
-        self.intercept = self.initial - self.slope
-        self.slope_2 = -(self.chekpoint - self.final) / (MAX_FRAMES - EPSILON_ANNEALING_FRAMES)
-        self.intercept_2 = self.final - self.slope_2 * MAX_FRAMES
-
-    def get_epsilon(self, frame):
-        if self.decay_type == EpsilonDecay.SINUSOID:
-            return self.sinusoid_decay(frame)
-        elif self.decay_type == EpsilonDecay.EXPONENTIAL:
-            return self.exp_decay(frame)
-        else:
-            return self.linear_decay(frame)
-
-    def exp_decay(self, frame, decay_rate=0.999999):
-        eps = decay_rate ** frame
-        return max(eps, self.final)
-
-    def linear_decay(self, frame):
-        if frame < EPSILON_ANNEALING_FRAMES:
-            return self.slope * frame + self.intercept
-        else:
-            return max(self.slope_2 * frame + self.intercept_2, self.final)
-
-    def sinusoid_decay(self, x, decay_rate=0.999997, n_epochs=5):
-        return max(self.initial * decay_rate ** x * 0.5 * (1. + math.cos((2. * math.pi * x * n_epochs) / MAX_FRAMES)),
-                   self.final)
-
-
-class FlappyBirdWrapper(object):
-
-    def __init__(self, env, image_transformer, agent_history_length=FRAMES_IN_STATE):
-        self.env = env
-        self.image_transformer = image_transformer
-        self.state = None
-        self.agent_history_length = agent_history_length
-
-    def reset(self, sess):
-        frame = self.env.reset()
-        processed_frame = self.image_transformer.transform(frame, sess=sess)
-        self.state = np.stack([processed_frame] * 4, axis=2)
-
-        return self.state
-
-    def _process_reward(self, reward):
-        if reward < 0:
-            return -100
-        else:
-            return reward
-
-    def step(self, sess, action):
-        new_frame, reward, done, _ = self.env.step(action)
-        processed_new_frame = self.image_transformer.transform(new_frame, sess=sess)
-        new_state = update_state(self.state, processed_new_frame)
-        self.state = new_state
-
-        return processed_new_frame, reward, done, new_frame
-
-    def close(self):
-        self.env.close()
-
-
-def populate_experience(env, replay_buffer, sess):
+def populate_experience(env, replay_buffer):
     print("Populating experience replay buffer...")
-    obs = env.reset(sess)
+    obs = env.reset()
     for i in range(MIN_EXPERIENCES):
         action = np.random.choice(ACTIONS_NUM)
-        processed_new_frame, reward, done, new_frame = env.step(sess, action)
+        processed_new_frame, reward, done, new_frame = env.step(action)
         replay_buffer.add_experience(action, processed_new_frame, reward, done)
         if done:
-            obs = env.reset(sess)
+            obs = env.reset()
     env.close()
 
 
-def train_ddqn_model(env, num_episodes, batch_size, gamma):
+def train_ddqn_model(batch_size, gamma):
     tf.reset_default_graph()
 
     replay_buffer = ReplayBuffer(MAX_EXPERIENCES, batch_size, (IMG_SIZE, IMG_SIZE), FRAMES_IN_STATE)
@@ -295,8 +215,9 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
 
     image_transformer = ImageTransformer(origin_shape=OBS_SHAPE, out_shape=(IMG_SIZE, IMG_SIZE),
                                          crop_boundaries=CROP_BOUNDS)
-    epsilon_scheduler = EpsilonGreedyScheduler(EpsilonDecay.LINEAR)
-    flappy = FlappyBirdWrapper(env, image_transformer)
+    epsilon_scheduler = EpsilonGreedyScheduler(decay_type=EpsilonDecay.LINEAR, max_frames=MAX_FRAMES,
+                                               epsilon_annealing_frames=EPSILON_ANNEALING_FRAMES)
+    flappy = FlappyBirdWrapper(image_transformer=image_transformer)
 
     init = tf.global_variables_initializer()
     with tf.Session() as sess:
@@ -306,22 +227,26 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
 
         model.set_session(sess)
         target_model.set_session(sess)
+        flappy.set_session(sess)
         sess.run(init)
 
-        populate_experience(flappy, replay_buffer, sess)
+        populate_experience(flappy, replay_buffer)
 
         while frame_number < MAX_FRAMES:
             epoch_frame = 0
             while epoch_frame < EVAL_FREQUENCY:
-                state = flappy.reset(sess)
+                state = flappy.reset()
                 episode_reward_sum = 0
                 for _ in range(MAX_EPISODE_LENGTH):
                     epsilon = epsilon_scheduler.get_epsilon(frame_number)
                     action = model.sample_action(state, epsilon)
-                    processed_new_frame, reward, done, _ = flappy.step(sess, action)
+                    processed_new_frame, reward, done, _ = flappy.step(action)
                     frame_number += 1
                     epoch_frame += 1
                     episode_reward_sum += reward
+
+                    new_state = update_state(state, processed_new_frame)
+                    state = new_state
 
                     replay_buffer.add_experience(action, processed_new_frame, reward, done)
 
@@ -357,13 +282,13 @@ def train_ddqn_model(env, num_episodes, batch_size, gamma):
 
             for _ in range(EVAL_STEPS):
                 if done:
-                    state = flappy.reset(sess)
+                    state = flappy.reset()
                     episode_reward_sum = 0
                     done = False
 
                 action = model.sample_action(state, 0.)
 
-                processed_new_frame, reward, done, new_frame = flappy.step(sess, action)
+                processed_new_frame, reward, done, new_frame = flappy.step(action)
                 evaluate_frame_number += 1
                 episode_reward_sum += reward
 
