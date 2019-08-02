@@ -39,7 +39,7 @@ FRAMES_IN_STATE = 4
 
 SAVE_MODEL_PATH = "outputs/"
 SUMMARIES = "summaries/"
-RUNID = 'run_1'
+RUNID = 'run_2'
 
 Path(SAVE_MODEL_PATH).mkdir(exist_ok=True)
 Path(SUMMARIES + RUNID).mkdir(parents=True, exist_ok=True)
