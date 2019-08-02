@@ -12,10 +12,10 @@ from environment import FlappyBirdWrapper
 from epsilon import EpsilonDecay, EpsilonGreedyScheduler
 
 ACTIONS_NUM = 2
-MAX_FRAMES = 10
-EPSILON_ANNEALING_FRAMES = 3000
-EVAL_FREQUENCY = 10
-EVAL_STEPS = 10
+MAX_FRAMES = 30000000
+EPSILON_ANNEALING_FRAMES = 20000000
+EVAL_FREQUENCY = 500000
+EVAL_STEPS = 1000
 LEARNING_RATE = 0.001
 
 SAVE_MODEL_PATH = "q_learning_outputs/"
@@ -36,10 +36,10 @@ def to_bin(value, bins):
 
 class FeatureTransformer:
     def __init__(self):
-        self.agent_pos_y = np.linspace(-2.4, 2.4, 9)
-        self.agent_velocity = np.linspace(-2, 2, 9)
-        self.dist_next = np.linspace(-0.4, 0.4, 9)
-        self.dist_next_next = np.linspace(-3.5, 3.5, 9)
+        self.agent_pos_y = np.linspace(-15, 330, 9)
+        self.agent_velocity = np.linspace(-16, 10, 9)
+        self.dist_next = np.linspace(0., 375, 9)
+        self.dist_next_next = np.linspace(145., 500., 9)
 
     def transform(self, observation):
         # returns an int
@@ -78,8 +78,12 @@ class QLearningBinsModel:
             p = self.predict(s)
             return np.argmax(p)
 
-    def save(self):
-        pass
+    def save(self, file_name=SAVE_MODEL_PATH + 'q_learning_weights.npy'):
+        np.save(file_name, self.Q)
+
+    def load(self, file_name=SAVE_MODEL_PATH + 'q_learning_weights.npy'):
+        self.Q = np.load(file_name)
+        return self.Q
 
 
 class QLearningModel:
@@ -123,17 +127,21 @@ class QLearningModel:
         pass
 
 
+states = []
+
+
 def play_one(env, model, epsilon_scheduler, total_t):
     observation = env.reset()
     done = False
     totalreward = 0
     iters = 0
+    states.append(observation)
     while not done:
         eps = epsilon_scheduler.get_epsilon(total_t)
         action = model.sample_action(observation, 1.)
         prev_observation = observation
         observation, reward, done, info = env.step(action)
-
+        states.append(observation)
         totalreward += reward
 
         model.learn(prev_observation, action, reward, observation, done)
@@ -141,33 +149,33 @@ def play_one(env, model, epsilon_scheduler, total_t):
         iters += 1
         total_t += 1
 
-    return totalreward, total_t, eps
+    return totalreward, total_t, iters, eps
 
 
 def train_q_learning_model(gamma):
     flappy = FlappyBirdWrapper(screen_output=False)
     feature_transformer = FeatureTransformer()
 
-    # model = QLearningBinsModel(feature_transformer=feature_transformer, states_n=flappy.observations_num,
-    #                            actions_n=ACTIONS_NUM, gamma=gamma)
-    model = QLearningModel(gamma=gamma)
+    model = QLearningBinsModel(feature_transformer=feature_transformer, states_n=flappy.observations_num,
+                               actions_n=ACTIONS_NUM, gamma=gamma)
+    # model = QLearningModel(gamma=gamma)
     # flappy = gym.make("MountainCar-v0")
     epsilon_scheduler = EpsilonGreedyScheduler(decay_type=EpsilonDecay.LINEAR, max_frames=MAX_FRAMES,
                                                epsilon_annealing_frames=EPSILON_ANNEALING_FRAMES)
     rewards = []
-    states = []
     total_t = 0
-    for i_episode in range(MAX_FRAMES):
-        episode_reward, total_t, epsilon = play_one(flappy, model, epsilon_scheduler, total_t)
-        rewards.append(episode_reward)
-        # if len(rewards) % 100 == 0:
-        print("Episode:", len(rewards),
-              "Frame number:", total_t,
-              "Episode reward:", episode_reward,
-              "Avg Reward (Last 100):", "%.3f" % np.mean(rewards[-100:]),
-              "Epsilon:", "%.3f" % epsilon)
-        # if len(rewards) > 2:
-        #     return
+    while total_t < MAX_FRAMES:
+        epoch_frame = 0
+        while epoch_frame < EVAL_FREQUENCY:
+            episode_reward, total_t, iters, epsilon = play_one(flappy, model, epsilon_scheduler, total_t)
+            epoch_frame += iters
+            rewards.append(episode_reward)
+            if len(rewards) % 100 == 0:
+                print("Episode:", len(rewards),
+                      "Frame number:", total_t,
+                      "Episode reward:", episode_reward,
+                      "Avg Reward (Last 100):", "%.3f" % np.mean(rewards[-100:]),
+                      "Epsilon:", "%.3f" % epsilon)
 
         # Evaluate
         done = True
@@ -176,33 +184,44 @@ def train_q_learning_model(gamma):
         eval_rewards = []
         evaluate_frame_number = 0
 
-        # for _ in range(EVAL_STEPS):
-        #     if done:
-        #         state = flappy.reset()
-        #         episode_reward_sum = 0
-        #         done = False
-        #
-        #     # flappy.render()
-        #     action = model.sample_action(state, 0.)
-        #
-        #     processed_new_frame, reward, done, new_frame = flappy.step(action)
-        #     evaluate_frame_number += 1
-        #     episode_reward_sum += reward
-        #
-        #     if gif:
-        #         frames_for_gif.append(new_frame)
-        #     if done:
-        #         eval_rewards.append(episode_reward_sum)
-        #         gif = False  # Save only the first game of the evaluation as a gif
+        for _ in range(EVAL_STEPS):
+            if done:
+                state = flappy.reset()
+                episode_reward_sum = 0
+                done = False
 
-        # eval_score = np.mean(eval_rewards)
-        # print("Evaluation score:\n", eval_score)
+            # flappy.render()
+            action = model.sample_action(state, 0.)
+
+            state, reward, done, new_frame = flappy.step(action, False)
+            evaluate_frame_number += 1
+            episode_reward_sum += reward
+
+            if gif:
+                frames_for_gif.append(new_frame)
+            if done:
+                eval_rewards.append(episode_reward_sum)
+                gif = False  # Save only the first game of the evaluation as a gif
+
+        eval_score = np.mean(eval_rewards)
+        print("Evaluation score:\n", eval_score)
         # try:
-        #     generate_gif(frames_for_gif, frame_number, eval_score, SAVE_MODEL_PATH)
+        #     generate_gif(frames_for_gif, total_t, eval_score, SAVE_MODEL_PATH)
         # except IndexError:
         #     print("No evaluation game finished")
 
-        # print(model.q_table.values())
-    # print(len(model.q_table.values()))
     model.save()
     save_rewards(rewards, file_name='q_learning_rewards.npy')
+    pos = []
+    val = []
+    dist = []
+    next_dist = []
+    for position, velocity, distance, n_distance in states:
+        pos.append(position)
+        val.append(velocity)
+        dist.append(distance)
+        next_dist.append(n_distance)
+    print("Position min {} max {}".format(min(pos), max(pos)))
+    print("Velocity min {} max {}".format(min(val), max(val)))
+    print("Distance min {} max {}".format(min(dist), max(dist)))
+    print("Next distance min {} max {}".format(min(next_dist), max(next_dist)))
