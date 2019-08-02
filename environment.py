@@ -10,7 +10,7 @@ class FlappyBirdWrapper(object):
     def __init__(self, screen_output=True, image_transformer=None, agent_history_length=4):
         os.environ["SDL_VIDEODRIVER"] = "dummy"  # to avoid empty game window creation
         self.game = FlappyBird()
-        self.env = PLE(self.game, display_screen=False, reward_values={"loss": -5.0, "positive": 5.0})
+        self.env = PLE(self.game, display_screen=False, reward_values={"loss": -5.0, "positive": 1.0})
         self.env.init()
         self.screen_out = screen_output
         self.image_transformer = image_transformer
