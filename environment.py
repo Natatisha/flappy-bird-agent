@@ -17,7 +17,7 @@ class FlappyBirdWrapper(object):
         self.state = None
         self.agent_history_length = agent_history_length
         self.actions = self.game.actions
-        self.observations_num = 6
+        self.observations_num = 4
         self.sess = None
 
     def set_session(self, sess):
@@ -57,8 +57,7 @@ class FlappyBirdWrapper(object):
         next_pipe_center_y = next_pipe_top_y + (next_pipe_bottom_y - next_pipe_top_y) / 2
         next_next_pipe_center_y = next_next_pipe_top_y + (next_next_pipe_bottom_y - next_next_pipe_top_y) / 2
 
-        return (player_y, player_vel, next_pipe_dist_to_player, next_pipe_center_y,
-                next_next_pipe_dist_to_player, next_next_pipe_center_y)
+        return (player_y, player_vel, next_pipe_dist_to_player, next_pipe_center_y)
 
     def _process_reward(self, state, reward):
         # if not self.screen_out:

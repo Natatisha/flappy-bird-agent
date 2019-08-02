@@ -42,14 +42,13 @@ class FeatureTransformer:
         # self.dist_next_next = np.linspace(145., 500., 11)
         self.x_dist_next = np.linspace(60., 300., 9)
         self.y_center_next = np.linspace(75., 245., 9)
-        self.x_dist_next_next = np.linspace(200., 450., 9)
-        self.y_center_next_next = np.linspace(75., 245., 9)
+        # self.x_dist_next_next = np.linspace(200., 450., 9)
+        # self.y_center_next_next = np.linspace(75., 245., 9)
 
     def transform(self, observation):
         # returns an int
         # agent_pos, agent_vel, dist_next, dist_next_next = observation
-        agent_pos, agent_vel, next_pipe_dist_to_player, next_pipe_center_y, \
-        next_next_pipe_dist_to_player, next_next_pipe_center_y = observation
+        agent_pos, agent_vel, next_pipe_dist_to_player, next_pipe_center_y = observation
         return build_state([
             to_bin(agent_pos, self.agent_pos_y),
             to_bin(agent_vel, self.agent_velocity),
@@ -57,8 +56,8 @@ class FeatureTransformer:
             # to_bin(dist_next_next, self.dist_next_next),
             to_bin(next_pipe_dist_to_player, self.x_dist_next),
             to_bin(next_pipe_center_y, self.y_center_next),
-            to_bin(next_next_pipe_dist_to_player, self.x_dist_next_next),
-            to_bin(next_next_pipe_center_y, self.y_center_next_next)
+            # to_bin(next_next_pipe_dist_to_player, self.x_dist_next_next),
+            # to_bin(next_next_pipe_center_y, self.y_center_next_next)
         ])
 
 
@@ -249,19 +248,19 @@ def train_q_learning_model(gamma):
     next_dist_x = []
     center_y = []
     center_y_next = []
-    for position, velocity, x_dist, y_cent, x_dist_n, y_cent_n in states:
-        pos.append(position)
-        val.append(velocity)
-        dist_x.append(x_dist)
-        next_dist_x.append(x_dist_n)
-        center_y.append(y_cent)
-        center_y_next.append(y_cent_n)
-    print("Position min {} max {}".format(min(pos), max(pos)))
-    print("Velocity min {} max {}".format(min(val), max(val)))
-    print("Distance to the next min {} max {}".format(min(dist_x), max(dist_x)))
-    print("Center y  min {} max {}".format(min(center_y), max(center_y)))
-    print("Distance to the next next min {} max {}".format(min(next_dist_x), max(next_dist_x)))
-    print("Center y next min {} max {}".format(min(center_y_next), max(center_y_next)))
+    # for position, velocity, x_dist, y_cent, x_dist_n, y_cent_n in states:
+    #     pos.append(position)
+    #     val.append(velocity)
+    #     dist_x.append(x_dist)
+    #     next_dist_x.append(x_dist_n)
+    #     center_y.append(y_cent)
+    #     center_y_next.append(y_cent_n)
+    # print("Position min {} max {}".format(min(pos), max(pos)))
+    # print("Velocity min {} max {}".format(min(val), max(val)))
+    # print("Distance to the next min {} max {}".format(min(dist_x), max(dist_x)))
+    # print("Center y  min {} max {}".format(min(center_y), max(center_y)))
+    # print("Distance to the next next min {} max {}".format(min(next_dist_x), max(next_dist_x)))
+    # print("Center y next min {} max {}".format(min(center_y_next), max(center_y_next)))
 
     # c1 = Counter(pos)
     # c2 = Counter(val)
