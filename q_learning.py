@@ -40,7 +40,7 @@ class FeatureTransformer:
         self.agent_velocity = np.linspace(-8., 6., 9)
         # self.dist_next = np.linspace(50., 300., 11)
         # self.dist_next_next = np.linspace(145., 500., 11)
-        self.x_dist_next = np.linspace(60., 300., 9)
+        self.x_dist_next = np.linspace(10., 310., 9)
         self.y_center_next = np.linspace(75., 245., 9)
         # self.x_dist_next_next = np.linspace(200., 450., 9)
         # self.y_center_next_next = np.linspace(75., 245., 9)
