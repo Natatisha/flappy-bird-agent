@@ -291,7 +291,9 @@ def train_ddqn_model(batch_size, gamma):
                 processed_new_frame, reward, done, new_frame = flappy.step(action)
                 evaluate_frame_number += 1
                 episode_reward_sum += reward
-
+                new_state = update_state(state, processed_new_frame)
+                state = new_state
+                
                 if gif:
                     frames_for_gif.append(new_frame)
                 if done:
