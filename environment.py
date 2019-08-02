@@ -51,9 +51,9 @@ class FlappyBirdWrapper(object):
         next_next_pipe_top_y = raw_state["next_next_pipe_top_y"]
         next_pipe_dist_to_player = raw_state["next_pipe_dist_to_player"]
         next_next_pipe_dist_to_player = raw_state["next_next_pipe_dist_to_player"]
-        dist = self._calc_dist(player_y, next_pipe_bottom_y, next_pipe_top_y, next_pipe_dist_to_player)
-        dist_next = self._calc_dist(player_y, next_next_pipe_bottom_y, next_next_pipe_top_y,
-                                    next_next_pipe_dist_to_player)
+        # dist = self._calc_dist(player_y, next_pipe_bottom_y, next_pipe_top_y, next_pipe_dist_to_player)
+        # dist_next = self._calc_dist(player_y, next_next_pipe_bottom_y, next_next_pipe_top_y,
+        #                             next_next_pipe_dist_to_player)
         next_pipe_center_y = next_pipe_top_y + (next_pipe_bottom_y - next_pipe_top_y) / 2
         next_next_pipe_center_y = next_next_pipe_top_y + (next_next_pipe_bottom_y - next_next_pipe_top_y) / 2
 
