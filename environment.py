@@ -61,13 +61,19 @@ class FlappyBirdWrapper(object):
 
     def _process_reward(self, state, reward):
         if not self.screen_out:
+            dist = self._calc_dist(state[0], state[3], state[2])
             if reward == 0:
-                dist = self._calc_dist(state[0], state[3], state[2])
-                reward = 0.99 ** dist
+                # reward = 0.99 ** dist
+                reward = reward
             elif reward < 0:
                 reward = -300
             else:
                 reward = 5
+
+            # if reward == 5:
+            #     print("distance is {}, reward {}, agent y diff {}, agent vel {}, PASSED {}"
+            #           .format(dist, reward, abs(state[0] - state[3]), state[1], reward == 5))
+
         return reward
 
     def _process_action(self, action):
@@ -95,11 +101,11 @@ class FlappyBirdWrapper(object):
     def close(self):
         pass  # if we'll decide to change environment, for example to OpenAI gym, we'll need this function
 
-#
+
 # import matplotlib.pyplot as plt
 #
 # if __name__ == "__main__":
 #     X = np.arange(50, 310, 1.)
-#     calc = lambda dist: 0.99**dist
+#     calc = lambda dist: 0.9**dist
 #     plt.plot(X, calc(X))
 #     plt.show()
