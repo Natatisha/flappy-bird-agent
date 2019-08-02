@@ -62,7 +62,10 @@ class FlappyBirdWrapper(object):
     def _process_reward(self, state, reward):
         if not self.screen_out:
             dist = self._calc_dist(state[0], state[3], state[2])
-            reward = 0.99**dist if reward == 0 else reward
+            if reward == 0:
+                reward = 0.99 ** dist
+            elif reward < 0:
+                reward = -300
         return reward
 
     def _process_action(self, action):
