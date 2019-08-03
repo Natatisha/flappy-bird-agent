@@ -42,8 +42,8 @@ class FeatureTransformer:
         # self.dist_next_next = np.linspace(145., 500., 11)
         self.x_dist_next = np.linspace(10., 310., 9)
         self.y_center_next = np.linspace(75., 245., 9)
-        # self.x_dist_next_next = np.linspace(200., 450., 9)
-        # self.y_center_next_next = np.linspace(75., 245., 9)
+        self.x_dist_next_next = np.linspace(200., 450., 9)
+        self.y_center_next_next = np.linspace(75., 245., 9)
 
     def transform(self, observation):
         # returns an int
@@ -190,7 +190,7 @@ def train_q_learning_model(gamma):
                                actions_n=ACTIONS_NUM, gamma=gamma)
     # model = QLearningModel(gamma=gamma)
     # flappy = gym.make("MountainCar-v0")
-    epsilon_scheduler = EpsilonGreedyScheduler(decay_type=EpsilonDecay.LINEAR, max_frames=MAX_FRAMES,
+    epsilon_scheduler = EpsilonGreedyScheduler(decay_type=EpsilonDecay.SINUSOID, max_frames=MAX_FRAMES,
                                                epsilon_annealing_frames=EPSILON_ANNEALING_FRAMES)
     rewards = []
     total_t = 0
