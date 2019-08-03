@@ -1,5 +1,31 @@
 import numpy as np
 import random
+from collections import namedtuple, deque
+
+Experience = namedtuple('Experience', ['state', 'action', 'reward', 'done', 'new_state'])
+
+
+class SimpleBuffer:
+    def __init__(self, buffer_size, batch_size):
+        self.buffer_size = buffer_size
+        self.batch_size = batch_size
+        self.memory = deque(maxlen=buffer_size)
+
+    def add_experience(self, state, action, reward, done, new_state):
+        exp = Experience(state, action, reward, done, new_state)
+        self.memory.append(exp)
+
+    def sample(self):
+        batch = random.sample(list(self.memory), self.batch_size)
+        states = [experience.state for experience in batch]
+        actions = [experience.action for experience in batch]
+        rewards = [experience.reward for experience in batch]
+        dones = [experience.done for experience in batch]
+        new_states = [experience.new_state for experience in batch]
+        return states, actions, rewards, dones, new_states
+
+    def count(self):
+        return len(self.memory)
 
 
 class ReplayBuffer:

@@ -1,6 +1,7 @@
 import argparse
 from ddqn import train_ddqn_model
 from q_learning import train_q_learning_model
+from dqn_simple import train_dqn
 
 DEFAULT_GAMMA = 0.99
 DEFAULT_BATCH_SIZE = 32
@@ -14,7 +15,7 @@ def get_arguments():
     parser.add_argument('--gamma', '-g', action='store', nargs=1, default=[DEFAULT_GAMMA], type=float,
                         help="Discount factor")
     parser.add_argument('--model', '-m', action='store', nargs=1, default=[DEFAULT_MODEL],
-                        help="Model type. Available types: ddqn, q_learn")
+                        help="Model type. Available types: ddqn, q_learn, dqn")
     return vars(parser.parse_args())
 
 
@@ -33,5 +34,7 @@ if __name__ == '__main__':
         model, episode_rewards = train_ddqn_model(batch_size, gamma)
     elif model == 'q_learn':
         train_q_learning_model(gamma)
+    elif model == 'dqn':
+        train_dqn(gamma, batch_size)
     else:
         raise RuntimeWarning("Model {} is not supported!".format(model))
