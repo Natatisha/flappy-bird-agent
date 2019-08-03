@@ -11,7 +11,7 @@ class EpsilonDecay(Enum):
 
 
 EPSILON_INITIAL = 1.
-EPSILON_CHECKPOINT = 0.01
+EPSILON_CHECKPOINT = 0.1
 EPSILON_FINAL = 0.001
 
 
@@ -49,26 +49,14 @@ class EpsilonGreedyScheduler:
         else:
             return max(self.slope_2 * frame + self.intercept_2, self.final)
 
-    def sinusoid_decay(self, x, decay_rate=0.999997, n_epochs=5):
+    def sinusoid_decay(self, x, decay_rate=0.9999998, n_epochs=5):
         return max(
             self.initial * decay_rate ** x * 0.5 * (1. + math.cos((2. * math.pi * x * n_epochs) / self.max_frames)),
             self.final)
 
 
 if __name__ == '__main__':
-    scheduler = EpsilonGreedyScheduler(EpsilonDecay.SINUSOID, )
-    X = np.arange(0., 3e6, 1.)
+    scheduler = EpsilonGreedyScheduler(300000, 100000, EpsilonDecay.SINUSOID)
+    X = np.arange(0., 30e6, 100.)
     plt.plot(X, [scheduler.get_epsilon(x) for x in X])
-    # plt.plot(X, [decay(x, 0.9997) for x in X])
     plt.show()
-    rewards_0 = load_rewards(file_name='ddqn_rewards_0.npy')
-    rewards_1 = load_rewards(file_name='ddpq_weights_20000.npy')
-    y0 = smooth(rewards_0)
-    y1 = smooth(rewards_1)
-
-    # plt.plot(y0, label='orig')
-    # plt.plot(y1, label='changed')
-    # plt.legend()
-    # plt.show()
-
-    # plot_rewards(rewards_1[:10000])
