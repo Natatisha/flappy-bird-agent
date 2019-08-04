@@ -57,7 +57,8 @@ class FlappyBirdWrapper(object):
         next_pipe_center_y = next_pipe_top_y + (next_pipe_bottom_y - next_pipe_top_y) / 2
         next_next_pipe_center_y = next_next_pipe_top_y + (next_next_pipe_bottom_y - next_next_pipe_top_y) / 2
 
-        return (player_y, player_vel, next_pipe_dist_to_player, next_pipe_center_y)
+        return (player_y, player_vel, next_pipe_dist_to_player, next_pipe_center_y, next_next_pipe_dist_to_player,
+                next_next_pipe_center_y)
 
     def _process_reward(self, reward):
         if self.process_reward:
@@ -96,7 +97,7 @@ class FlappyBirdWrapper(object):
         processed_new_state, new_state = self.process_state()
         done = self.env.game_over()
         if train:
-            reward = self._process_reward(processed_new_state, reward)
+            reward = self._process_reward(reward)
         return processed_new_state, reward, done, new_state
 
     def close(self):

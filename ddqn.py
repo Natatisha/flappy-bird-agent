@@ -288,7 +288,7 @@ def train_ddqn_model(batch_size, gamma):
 
                 action = model.sample_action(state, 0.)
 
-                processed_new_frame, reward, done, new_frame = flappy.step(action)
+                processed_new_frame, reward, done, new_frame = flappy.step(action, train=False)
                 evaluate_frame_number += 1
                 episode_reward_sum += reward
                 new_state = update_state(state, processed_new_frame)
