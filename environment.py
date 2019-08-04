@@ -7,7 +7,7 @@ import math
 
 class FlappyBirdWrapper(object):
 
-    def __init__(self, screen_output=True, image_transformer=None, agent_history_length=4):
+    def __init__(self, screen_output=True, image_transformer=None, agent_history_length=4, processed_reward=True):
         os.environ["SDL_VIDEODRIVER"] = "dummy"  # to avoid empty game window creation
         self.game = FlappyBird()
         self.env = PLE(self.game, display_screen=False, reward_values={"loss": -5.0, "positive": 1.0})
@@ -18,6 +18,7 @@ class FlappyBirdWrapper(object):
         self.agent_history_length = agent_history_length
         self.actions = self.game.actions
         self.observations_num = 4
+        self.process_reward = processed_reward
         self.sess = None
 
     def set_session(self, sess):
@@ -31,15 +32,14 @@ class FlappyBirdWrapper(object):
 
     def process_state(self):
         if self.screen_out:
-            raw_state = self._rotate_and_flip_img(self.env.getScreenRGB())
+            raw_state = self.get_screen()
             if self.image_transformer is not None:
                 assert self.sess
                 state = self.image_transformer.transform(raw_state, sess=self.sess)
             else:
                 state = raw_state
         else:
-            raw_state = self.env.getGameState()
-            state = self._process_dict_state(raw_state)
+            raw_state, state = self.get_meta_state()
         return state, raw_state
 
     def _process_dict_state(self, raw_state):
@@ -59,20 +59,21 @@ class FlappyBirdWrapper(object):
 
         return (player_y, player_vel, next_pipe_dist_to_player, next_pipe_center_y)
 
-    def _process_reward(self, state, reward):
-        if not self.screen_out:
-            dist = self._calc_dist(state[0], state[3], state[2])
+    def _process_reward(self, reward):
+        if self.process_reward:
+            state, _ = self.get_meta_state()
+            dist = self._calc_dist(state[0], state[3], state[2] + 50.)  # shift target point by 50 pixels to the right
             if reward == 0:
-                # reward = 0.95 ** dist
-                reward = reward
+                reward = 0.95 ** dist
+                # reward = reward
             elif reward < 0:
                 reward = -300
             else:
                 reward = 5
 
-            # if reward == 5:
-            #     print("distance is {}, reward {}, agent y diff {}, agent vel {}, PASSED {}"
-            #           .format(dist, reward, abs(state[0] - state[3]), state[1], reward == 5))
+                # if reward == 5:
+                #     print("distance is {}, reward {}, agent y diff {}, agent vel {}, PASSED {}"
+                #           .format(dist, reward, abs(state[0] - state[3]), state[1], reward == 5))
 
         return reward
 
@@ -103,6 +104,11 @@ class FlappyBirdWrapper(object):
 
     def get_screen(self):
         return self._rotate_and_flip_img(self.env.getScreenRGB())
+
+    def get_meta_state(self):
+        raw_state = self.env.getGameState()
+        state = self._process_dict_state(raw_state)
+        return state, raw_state
 
 # import matplotlib.pyplot as plt
 #
