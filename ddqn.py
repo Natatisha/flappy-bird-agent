@@ -21,13 +21,13 @@ from utils import generate_gif
 # MAX_EXPERIENCES = 10000
 # MIN_EXPERIENCES = 100
 
-MAX_EXPERIENCES = 1000000
+MAX_EXPERIENCES = 500000
 MIN_EXPERIENCES = 50000
 
 ACTIONS_NUM = 2
 EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
 EPSILON_ANNEALING_FRAMES = 2000000
-MAX_FRAMES = 30000000
+MAX_FRAMES = 3000000
 OBS_SHAPE = (512, 288, 3)
 CROP_BOUNDS = (0, 50, 400, 238)
 
@@ -46,7 +46,7 @@ Path(SUMMARIES + RUNID).mkdir(parents=True, exist_ok=True)
 SUMM_WRITER = tf.summary.FileWriter(os.path.join(SUMMARIES, RUNID))
 
 MAX_EPISODE_LENGTH = 18000  # Equivalent of 5 minutes of gameplay at 60 frames per second
-EVAL_FREQUENCY = 500000  # Number of frames the agent sees between evaluations
+EVAL_FREQUENCY = 50000  # Number of frames the agent sees between evaluations
 EVAL_STEPS = 10000  # Number of frames for one evaluation
 
 UPDATE_FREQ = 4  # Every four actions a gradient descend step is performed
