@@ -17,7 +17,7 @@ class FlappyBirdWrapper(object):
         self.state = None
         self.agent_history_length = agent_history_length
         self.actions = self.game.actions
-        self.observations_num = 6
+        self.observations_num = 4
         self.process_reward = processed_reward
         self.sess = None
 
@@ -57,14 +57,12 @@ class FlappyBirdWrapper(object):
         next_pipe_center_y = next_pipe_top_y + (next_pipe_bottom_y - next_pipe_top_y) / 2
         next_next_pipe_center_y = next_next_pipe_top_y + (next_next_pipe_bottom_y - next_next_pipe_top_y) / 2
 
-        return (player_y, player_vel, next_pipe_dist_to_player, next_pipe_center_y, next_next_pipe_dist_to_player,
-                next_next_pipe_center_y)
+        return (player_y, player_vel, next_pipe_dist_to_player, next_pipe_center_y)
 
     def _process_reward(self, reward):
         if self.process_reward:
             state, _ = self.get_meta_state()
-            dist = self._calc_dist(state[0] + 15., state[3], state[
-                2] + 50.)  # shift target point by 50 pixels to the right and agent y position  by 15 pixels down
+            dist = self._calc_dist(state[0], state[3], state[2] + 50.)  # shift target point by 50 pixels to the right
             if reward == 0:
                 reward = 0.95 ** dist
                 # reward = reward
