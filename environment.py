@@ -39,7 +39,7 @@ class FlappyBirdWrapper(object):
             else:
                 state = raw_state
         else:
-            raw_state, state = self.get_meta_state()
+            state, raw_state = self.get_meta_state()
         return state, raw_state
 
     def _process_dict_state(self, raw_state):
