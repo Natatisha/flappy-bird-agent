@@ -11,18 +11,18 @@ from environment import FlappyBirdWrapper
 from epsilon import EpsilonGreedyScheduler, EpsilonDecay
 from utils import generate_gif
 
-MAX_EXPERIENCES = 1000000
+MAX_EXPERIENCES = 500000
 MIN_EXPERIENCES = 50000
 
 ACTIONS_NUM = 2
 EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
-EPSILON_ANNEALING_FRAMES = 2000000
-MAX_FRAMES = 30000000
-EVAL_FREQUENCY = 200000
+EPSILON_ANNEALING_FRAMES = 500000
+MAX_FRAMES = 1000000
+EVAL_FREQUENCY = 50000
 EVAL_STEPS = 1000
 TARGET_UPD_PERIOD = 50
 
-LEARNING_RATE = 1e-2
+LEARNING_RATE = 1e-5
 
 SAVE_MODEL_PATH = "dqn_outputs/"
 Path(SAVE_MODEL_PATH).mkdir(exist_ok=True)
@@ -209,7 +209,7 @@ def train_dqn(gamma, batch_size):
                                                                    total_t)
                 epoch_frame += iters
                 rewards.append(episode_reward)
-                if len(rewards) % 100 == 0:
+                if len(rewards) % 10 == 0:
                     print("Episode:", len(rewards),
                           "Frame number:", total_t,
                           "Episode reward:", episode_reward,
