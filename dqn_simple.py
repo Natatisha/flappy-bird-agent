@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import os
 
 try:
     from pathlib import Path
@@ -17,15 +18,19 @@ MIN_EXPERIENCES = 50000
 ACTIONS_NUM = 2
 EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
 EPSILON_ANNEALING_FRAMES = 500000
-MAX_FRAMES = 1000000
+MAX_FRAMES = 800000
 EVAL_FREQUENCY = 50000
 EVAL_STEPS = 1000
 TARGET_UPD_PERIOD = 50
+MAX_EPISODE_LENGTH = 18000
 
 LEARNING_RATE = 1e-5
 
 SAVE_MODEL_PATH = "dqn_outputs/"
+SUMMARIES = "dqn_summaries/"
+RUNID = "run_1"
 Path(SAVE_MODEL_PATH).mkdir(exist_ok=True)
+SUMM_WRITER = tf.summary.FileWriter(os.path.join(SUMMARIES, RUNID))
 
 
 # a version of HiddenLayer that keeps track of params
@@ -85,14 +90,14 @@ class DQN:
             reduction_indices=[1]
         )
 
-        cost = tf.reduce_sum(tf.square(self.G - selected_action_values))
-        self.train_op = tf.train.AdamOptimizer(learning_rate).minimize(cost)
-        # self.train_op = tf.train.AdagradOptimizer(1e-2).minimize(cost)
-        # self.train_op = tf.train.MomentumOptimizer(1e-3, momentum=0.9).minimize(cost)
-        # self.train_op = tf.train.GradientDescentOptimizer(1e-4).minimize(cost)
+        self.loss = tf.reduce_sum(tf.square(self.G - selected_action_values))
+        self.train_op = tf.train.AdamOptimizer(learning_rate).minimize(self.loss)
 
         self.buffer = buffer
         self.gamma = gamma
+
+        self.session = None
+        self.saver = None
 
     def set_session(self, session):
         self.session = session
@@ -119,14 +124,13 @@ class DQN:
         targets = [r + self.gamma * next_q if not done else r for r, next_q, done in zip(rewards, next_Q, dones)]
 
         # call optimizer
-        self.session.run(
-            self.train_op,
-            feed_dict={
-                self.X: states,
-                self.G: targets,
-                self.actions: actions
-            }
-        )
+        loss, _ = self.session.run([self.loss, self.train_op],
+                                   feed_dict={
+                                       self.X: states,
+                                       self.G: targets,
+                                       self.actions: actions
+                                   })
+        return loss
 
     def add_experience(self, s, a, r, s2, done):
         self.buffer.add_experience(s, a, r, done, s2)
@@ -138,13 +142,18 @@ class DQN:
             X = np.atleast_2d(x)
             return np.argmax(self.predict(X)[0])
 
+    def save(self, frame_number, path=SAVE_MODEL_PATH):
+        if self.saver is None:
+            self.saver = tf.train.Saver(max_to_keep=4)
+        self.saver.save(self.session, path + 'my_model', global_step=frame_number)
+
 
 def play_one(env, model, target_model, epsilon_scheduler, total_t, target_upd_period=TARGET_UPD_PERIOD):
     observation = env.reset()
     done = False
     totalreward = 0
     iters = 0
-    while not done:
+    while not done and iters < MAX_EPISODE_LENGTH:
         eps = epsilon_scheduler.get_epsilon(total_t)
         action = model.sample_action(observation, eps)
         prev_observation = observation
@@ -154,7 +163,7 @@ def play_one(env, model, target_model, epsilon_scheduler, total_t, target_upd_pe
 
         # update the model
         model.add_experience(prev_observation, action, reward, observation, done)
-        model.train(target_model)
+        loss = model.train(target_model)
 
         iters += 1
         total_t += 1
@@ -162,7 +171,7 @@ def play_one(env, model, target_model, epsilon_scheduler, total_t, target_upd_pe
         if iters % target_upd_period == 0:
             target_model.copy_from(model)
 
-    return totalreward, total_t, iters, eps
+    return totalreward, loss, total_t, iters, eps
 
 
 def populate_experience(env, replay_buffer):
@@ -191,6 +200,15 @@ def train_dqn(gamma, batch_size):
     target_model = DQN(D, K, sizes, gamma, buffer)
     init = tf.global_variables_initializer()
 
+    with tf.name_scope('Performance'):
+        LOSS_PH = tf.placeholder(tf.float32, shape=None, name='loss_summary')
+        LOSS_SUMMARY = tf.summary.scalar('loss', LOSS_PH)
+        REWARD_PH = tf.placeholder(tf.float32, shape=None, name='reward_summary')
+        REWARD_SUMMARY = tf.summary.scalar('reward', REWARD_PH)
+        EVAL_SCORE_PH = tf.placeholder(tf.float32, shape=None, name='evaluation_summary')
+        EVAL_SCORE_SUMMARY = tf.summary.scalar('evaluation_score', EVAL_SCORE_PH)
+    PERFORMANCE_SUMMARIES = tf.summary.merge([LOSS_SUMMARY, REWARD_SUMMARY])
+
     with tf.Session() as session:
         session.run(init)
         model.set_session(session)
@@ -201,15 +219,22 @@ def train_dqn(gamma, batch_size):
         populate_experience(flappy, buffer)
 
         rewards = []
+        loss_list = []
         total_t = 0
         while total_t < MAX_FRAMES:
             epoch_frame = 0
             while epoch_frame < EVAL_FREQUENCY:
-                episode_reward, total_t, iters, epsilon = play_one(flappy, model, target_model, epsilon_scheduler,
-                                                                   total_t)
+                episode_reward, loss, total_t, iters, epsilon = play_one(flappy, model, target_model, epsilon_scheduler,
+                                                                         total_t)
                 epoch_frame += iters
                 rewards.append(episode_reward)
+                loss_list.append(loss)
                 if len(rewards) % 10 == 0:
+                    summ = session.run(PERFORMANCE_SUMMARIES,
+                                       feed_dict={LOSS_PH: np.mean(loss_list),
+                                                  REWARD_PH: np.mean(rewards[-100:])})
+
+                    SUMM_WRITER.add_summary(summ, total_t)
                     print("Episode:", len(rewards),
                           "Frame number:", total_t,
                           "Episode reward:", episode_reward,
@@ -229,7 +254,6 @@ def train_dqn(gamma, batch_size):
                     episode_reward_sum = 0
                     done = False
 
-                # flappy.render()
                 action = model.sample_action(state, 0.)
 
                 state, reward, done, new_frame = flappy.step(action, False)
@@ -242,9 +266,13 @@ def train_dqn(gamma, batch_size):
                     eval_rewards.append(episode_reward_sum)
                     gif = False  # Save only the first game of the evaluation as a gif
 
-            eval_score = np.mean(eval_rewards)
+            eval_score = np.mean(eval_rewards) if len(eval_rewards) > 0 else episode_reward_sum
             print("Evaluation score:\n", eval_score)
             try:
                 generate_gif(frames_for_gif, total_t, eval_score, SAVE_MODEL_PATH)
             except IndexError:
                 print("No evaluation game finished")
+            summ = session.run(EVAL_SCORE_SUMMARY, feed_dict={EVAL_SCORE_PH: eval_score})
+            SUMM_WRITER.add_summary(summ, total_t)
+
+        model.save(total_t)
