@@ -53,45 +53,46 @@ class HiddenLayer:
 
 
 class DQN:
-    def __init__(self, D, K, hidden_layer_sizes, gamma, buffer, learning_rate=LEARNING_RATE):
+    def __init__(self, D, K, hidden_layer_sizes, gamma, buffer, scope, learning_rate=LEARNING_RATE):
         self.K = K
 
-        # create the graph
-        self.layers = []
-        M1 = D
-        for M2 in hidden_layer_sizes:
-            layer = HiddenLayer(M1, M2)
+        with tf.variable_scope(scope):
+            # create the graph
+            self.layers = []
+            M1 = D
+            for M2 in hidden_layer_sizes:
+                layer = HiddenLayer(M1, M2)
+                self.layers.append(layer)
+                M1 = M2
+
+            # final layer
+            layer = HiddenLayer(M1, K, lambda x: x)
             self.layers.append(layer)
-            M1 = M2
 
-        # final layer
-        layer = HiddenLayer(M1, K, lambda x: x)
-        self.layers.append(layer)
+            # collect params for copy
+            self.params = []
+            for layer in self.layers:
+                self.params += layer.params
 
-        # collect params for copy
-        self.params = []
-        for layer in self.layers:
-            self.params += layer.params
+            # inputs and targets
+            self.X = tf.placeholder(tf.float32, shape=(None, D), name='X')
+            self.G = tf.placeholder(tf.float32, shape=(None,), name='G')
+            self.actions = tf.placeholder(tf.int32, shape=(None,), name='actions')
 
-        # inputs and targets
-        self.X = tf.placeholder(tf.float32, shape=(None, D), name='X')
-        self.G = tf.placeholder(tf.float32, shape=(None,), name='G')
-        self.actions = tf.placeholder(tf.int32, shape=(None,), name='actions')
+            # calculate output and cost
+            Z = self.X
+            for layer in self.layers:
+                Z = layer.forward(Z)
+            Y_hat = Z
+            self.predict_op = Y_hat
 
-        # calculate output and cost
-        Z = self.X
-        for layer in self.layers:
-            Z = layer.forward(Z)
-        Y_hat = Z
-        self.predict_op = Y_hat
+            selected_action_values = tf.reduce_sum(
+                Y_hat * tf.one_hot(self.actions, K),
+                reduction_indices=[1]
+            )
 
-        selected_action_values = tf.reduce_sum(
-            Y_hat * tf.one_hot(self.actions, K),
-            reduction_indices=[1]
-        )
-
-        self.loss = tf.reduce_sum(tf.square(self.G - selected_action_values))
-        self.train_op = tf.train.AdamOptimizer(learning_rate).minimize(self.loss)
+            self.loss = tf.reduce_sum(tf.square(self.G - selected_action_values))
+            self.train_op = tf.train.AdamOptimizer(learning_rate).minimize(self.loss)
 
         self.buffer = buffer
         self.gamma = gamma
@@ -196,8 +197,8 @@ def train_dqn(gamma, batch_size):
     buffer = SimpleBuffer(MAX_EXPERIENCES, batch_size)
 
     sizes = [200, 200]
-    model = DQN(D, K, sizes, gamma, buffer)
-    target_model = DQN(D, K, sizes, gamma, buffer)
+    model = DQN(D, K, sizes, gamma, buffer, scope="model")
+    target_model = DQN(D, K, sizes, gamma, buffer, scope="target_model")
     init = tf.global_variables_initializer()
 
     with tf.name_scope('Performance'):
