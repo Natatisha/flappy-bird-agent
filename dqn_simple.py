@@ -18,10 +18,10 @@ MIN_EXPERIENCES = 50000
 ACTIONS_NUM = 2
 EPSILON_DECAY_TYPE = EpsilonDecay.LINEAR
 EPSILON_ANNEALING_FRAMES = 500000
-MAX_FRAMES = 800000
+MAX_FRAMES = 650000
 EVAL_FREQUENCY = 50000
 EVAL_STEPS = 1000
-TARGET_UPD_PERIOD = 50
+TARGET_UPD_PERIOD = 500
 MAX_EPISODE_LENGTH = 18000
 
 LEARNING_RATE = 1e-5
@@ -241,6 +241,8 @@ def train_dqn(gamma, batch_size):
                           "Episode reward:", episode_reward,
                           "Avg Reward (Last 100):", "%.3f" % np.mean(rewards[-100:]),
                           "Epsilon:", "%.3f" % epsilon)
+                if len(reward) % 1000 == 0:
+                    model.save(total_t)
 
             # Evaluate
             done = True
