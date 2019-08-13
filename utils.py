@@ -4,7 +4,6 @@ import imageio
 
 
 def smooth(x):
-    # last 100
     n = len(x)
     y = np.zeros(n)
     for i in range(n):

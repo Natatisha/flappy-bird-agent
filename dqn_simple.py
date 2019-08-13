@@ -279,3 +279,32 @@ def train_dqn(gamma, batch_size):
             SUMM_WRITER.add_summary(summ, total_t)
 
         model.save(total_t)
+
+
+def load_q_values(scope):
+    # note that correct graph should be already loaded!
+    with tf.get_default_graph().as_default():
+        collection = tf.GraphKeys.TRAINABLE_VARIABLES
+        variables = tf.get_collection(collection, scope=scope)
+        assert len(variables) > 0
+        print("Variables in scope '{}':".format(scope))
+        for v in variables:
+            print("\t" + str(v))
+
+        X = tf.get_default_graph().get_tensor_by_name(scope + '/X:0')
+        w1 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable:0')
+        b1 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable_1:0')
+        w2 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable_2:0')
+        b2 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable_3:0')
+        w3 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable_4:0')
+        b3 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable_5:0')
+
+        a1 = tf.matmul(X, w1) + b1
+        z1 = tf.nn.tanh(a1)
+
+        a2 = tf.matmul(z1, w2) + b2
+        z2 = tf.nn.tanh(a2)
+
+        q_values = tf.matmul(z2, w3) + b3
+
+        return q_values

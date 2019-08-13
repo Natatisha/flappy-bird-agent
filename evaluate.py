@@ -1,8 +1,7 @@
 import argparse
 import tensorflow as tf
 import numpy as np
-from image_transformer import ImageTransformer
-from ddqn import update_state
+from dqn_simple import load_q_values
 from utils import generate_gif, plot_rewards
 
 from environment import FlappyBirdWrapper
@@ -96,29 +95,7 @@ if __name__ == "__main__":
         saver = tf.train.import_meta_graph(model_path)
         scope = "model"
 
-        with tf.get_default_graph().as_default():
-            collection = tf.GraphKeys.TRAINABLE_VARIABLES
-            variables = tf.get_collection(collection, scope=scope)
-            assert len(variables) > 0
-            print("Variables in scope '{}':".format(scope))
-            for v in variables:
-                print("\t" + str(v))
-
-            X = tf.get_default_graph().get_tensor_by_name(scope + '/X:0')
-            w1 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable:0')
-            b1 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable_1:0')
-            w2 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable_2:0')
-            b2 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable_3:0')
-            w3 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable_4:0')
-            b3 = tf.get_default_graph().get_tensor_by_name(scope + '/Variable_5:0')
-
-            a1 = tf.matmul(X, w1) + b1
-            z1 = tf.nn.tanh(a1)
-
-            a2 = tf.matmul(z1, w2) + b2
-            z2 = tf.nn.tanh(a2)
-
-            q_values = tf.matmul(z2, w3) + b3
+        q_values = load_q_values(scope)
 
         with tf.Session() as session:
             saver.restore(session, tf.train.latest_checkpoint(model_folder))
