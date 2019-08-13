@@ -1,4 +1,4 @@
-# Flappy-bird-agent
+# Flappy bird agent
 This project is dedicated teaching a Reinforcement learning agent to play Flappy Bird game using DQN and PyGame Learning Environment.
 
 ![gameplay](gifs/ATARI_192388_reward_219.0.gif)
