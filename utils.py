@@ -9,7 +9,7 @@ def smooth(x):
     y = np.zeros(n)
     for i in range(n):
         start = max(0, i - 99)
-        y[i] = float(x[start:(i + 1)].sum()) / (i - start + 1)
+        y[i] = float(sum(x[start:(i + 1)])) / (i - start + 1)
     return y
 
 

@@ -1,13 +1,12 @@
 import numpy as np
 import math
 import matplotlib.pyplot as plt
-from utils import plot_rewards, save_rewards, load_rewards, smooth
 from enum import Enum
+
 
 class EpsilonDecay(Enum):
     LINEAR = 0
     SINUSOID = 1
-    EXPONENTIAL = 2
 
 
 EPSILON_INITIAL = 1.
@@ -16,7 +15,7 @@ EPSILON_FINAL = 0.001
 
 
 class EpsilonGreedyScheduler:
-    def __init__(self, max_frames, epsilon_annealing_frames, decay_type,
+    def __init__(self, max_frames, epsilon_annealing_frames, decay_type=EpsilonDecay.LINEAR,
                  epsilon_initial_value=EPSILON_INITIAL,
                  epsilon_checkpoint=EPSILON_CHECKPOINT, epsilon_final_value=EPSILON_FINAL):
         self.decay_type = decay_type
@@ -34,14 +33,8 @@ class EpsilonGreedyScheduler:
     def get_epsilon(self, frame):
         if self.decay_type == EpsilonDecay.SINUSOID:
             return self.sinusoid_decay(frame)
-        elif self.decay_type == EpsilonDecay.EXPONENTIAL:
-            return self.exp_decay(frame)
         else:
             return self.linear_decay(frame)
-
-    def exp_decay(self, frame, decay_rate=0.999999):
-        eps = decay_rate ** frame
-        return max(eps, self.final)
 
     def linear_decay(self, frame):
         if frame < self.epsilon_annealing_frames:
@@ -55,8 +48,12 @@ class EpsilonGreedyScheduler:
             self.final)
 
 
+# plot epsilon decay
 if __name__ == '__main__':
-    scheduler = EpsilonGreedyScheduler(300000, 100000, EpsilonDecay.SINUSOID)
-    X = np.arange(0., 30e6, 100.)
+    scheduler = EpsilonGreedyScheduler(600000, 500000, EpsilonDecay.LINEAR)
+    X = np.arange(0., 600000, 1.)
     plt.plot(X, [scheduler.get_epsilon(x) for x in X])
+    plt.title("Epsilon decay")
+    plt.xlabel("Epsilon")
+    plt.ylabel("Frames")
     plt.show()

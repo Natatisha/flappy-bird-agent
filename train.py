@@ -4,8 +4,8 @@ from q_learning import train_q_learning_model
 from dqn_simple import train_dqn
 
 DEFAULT_GAMMA = 0.99
-DEFAULT_BATCH_SIZE = 32
-DEFAULT_MODEL = 'ddqn'
+DEFAULT_BATCH_SIZE = 1024
+DEFAULT_MODEL = 'dqn'
 
 
 def get_arguments():
